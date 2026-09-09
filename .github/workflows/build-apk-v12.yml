@@ -37,7 +37,11 @@ jobs:
       - name: Montar projeto v1.2
         run: |
           set -e
-          base64 -d template/v12-template.tar.gz.b64 > /tmp/v12-template.tar.gz
+          cat template/v12parts/*.b64 > /tmp/v12-template.tar.gz.b64
+          test "$(wc -c < /tmp/v12-template.tar.gz.b64)" -eq 36024
+          echo "6c73cac5d9cc79c677ead020ec245ccd79b8eadb710412312d0b43415687c69c  /tmp/v12-template.tar.gz.b64" | sha256sum -c -
+          base64 -d /tmp/v12-template.tar.gz.b64 > /tmp/v12-template.tar.gz
+          gzip -t /tmp/v12-template.tar.gz
           tar -xzf /tmp/v12-template.tar.gz
           mkdir -p app/src/main/assets/www
 
