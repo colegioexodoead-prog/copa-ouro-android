@@ -1,6 +1,6 @@
 (function(){
   const COMMON=['elimCopaOuro','copaOuroQualified','copaOuroV3','copaOuroTeamDraft','copaOuroHistory','copa-ouro-edicoes-v1','copaOuroMercadoV2','copaOuroTeamCountryMapV1'];
-  const RESERVED=['copaProfile:','copaProfileUpdatedAt:','copaKnownDataKeysV13','copaOuroSeedPedroV13','copaOuroAppVersion','copaOuroOnlineSyncEnabled','copaLoginHashV131:'];
+  const RESERVED=['copaProfile:','copaProfileUpdatedAt:','copaKnownDataKeysV13','copaOuroSeedPedroV13','copaOuroAppVersion','copaOuroOnlineSyncEnabled','copaLoginHashV131:','copaRememberV132:','copaSavedPasswordV132:'];
   const rawSet=Storage.prototype.setItem,rawRemove=Storage.prototype.removeItem;
   function active(){return sessionStorage.getItem('copaActiveProfile')||''}
   function pname(){return sessionStorage.getItem('copaActiveProfileName')||''}
