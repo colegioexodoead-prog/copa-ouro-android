@@ -1,6 +1,6 @@
 (function(){
   const COMMON=['elimCopaOuro','copaOuroQualified','copaOuroV3','copaOuroTeamDraft','copaOuroHistory','copa-ouro-edicoes-v1','copaOuroMercadoV2','copaOuroTeamCountryMapV1'];
-  const RESERVED=['copaProfile:','copaProfileUpdatedAt:','copaKnownDataKeysV13','copaOuroSeedPedroV13','copaOuroAppVersion','copaOuroOnlineSyncEnabled'];
+  const RESERVED=['copaProfile:','copaProfileUpdatedAt:','copaKnownDataKeysV13','copaOuroSeedPedroV13','copaOuroAppVersion','copaOuroOnlineSyncEnabled','copaLoginHashV131:'];
   const rawSet=Storage.prototype.setItem,rawRemove=Storage.prototype.removeItem;
   function active(){return sessionStorage.getItem('copaActiveProfile')||''}
   function pname(){return sessionStorage.getItem('copaActiveProfileName')||''}
@@ -37,14 +37,27 @@
   }
   function loadFile(){
     const id=active();if(!id)return;const inp=document.createElement('input');inp.type='file';inp.accept='.json,application/json';
-    inp.onchange=()=>{const f=inp.files&&inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);const d=j.data||(j.local||j.remote);if(!d||typeof d!=='object')throw 0;apply(id,d,Date.now());alert('Backup carregado para '+pname()+'.');location.reload()}catch(e){alert('Arquivo de backup invalido.')}};r.readAsText(f)};inp.click()
+    inp.onchange=()=>{const f=inp.files&&inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);const d=j.data||(j.local||j.remote);if(!d||typeof d!=='object')throw 0;apply(id,d,Date.now());alert('Backup carregado para '+pname()+'.');location.reload()}catch(e){alert('Arquivo de backup inválido.')}};r.readAsText(f)};inp.click()
   }
   function toolbar(){
-    if(!active()||document.getElementById('copaUserBar'))return;
-    const b=document.createElement('div');b.id='copaUserBar';b.innerHTML='<span>👤 '+pname()+'</span><button id="copaBk">💾 Backup</button><button id="copaLd">📂 Carregar</button><button id="copaHome">🏠 Inicio</button><button id="copaOut">Sair</button>';
-    b.style.cssText='position:fixed;z-index:2147483647;left:8px;right:8px;bottom:8px;display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;background:#07150dee;border:1px solid #b7952f;border-radius:12px;padding:7px;color:#fff;font:12px Arial;box-shadow:0 3px 15px #0008';
-    b.querySelectorAll('button').forEach(x=>x.style.cssText='border:0;border-radius:8px;padding:7px 9px;background:#d4af37;color:#07150d;font-weight:700');document.body.appendChild(b);
-    b.querySelector('#copaBk').onclick=backup;b.querySelector('#copaLd').onclick=loadFile;b.querySelector('#copaHome').onclick=()=>location.href='/';b.querySelector('#copaOut').onclick=logout;
+    if(!active()||document.getElementById('copaUserMenu'))return;
+    const root=document.createElement('div');root.id='copaUserMenu';
+    root.innerHTML='<div id="copaMenuPanel"><div class="copaMenuWho">👤 '+pname()+'</div><button id="copaBk">💾 Salvar backup</button><button id="copaLd">📂 Carregar backup</button><button id="copaHome">🏠 Início</button><button id="copaOut">🚪 Sair</button></div><button id="copaMenuToggle" aria-label="Abrir menu">☰</button>';
+    root.style.cssText='position:fixed;z-index:2147483647;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));font-family:Arial,sans-serif;display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none';
+    const panel=root.querySelector('#copaMenuPanel');
+    panel.style.cssText='display:none;min-width:188px;background:#07150df5;border:1px solid #b7952f;border-radius:14px;padding:9px;box-shadow:0 5px 18px #0009;pointer-events:auto';
+    const who=panel.querySelector('.copaMenuWho');who.style.cssText='padding:6px 8px 9px;color:#f1d16b;font-size:12px;font-weight:700;text-align:center;border-bottom:1px solid #385342;margin-bottom:5px';
+    panel.querySelectorAll('button').forEach(x=>x.style.cssText='display:block;width:100%;border:0;border-radius:9px;padding:9px 10px;margin:5px 0;background:#d4af37;color:#07150d;font-weight:800;text-align:left;font-size:12px');
+    const toggle=root.querySelector('#copaMenuToggle');toggle.style.cssText='width:46px;height:46px;border:1px solid #d4af37;border-radius:50%;background:#0b2518;color:#f1d16b;font-size:22px;font-weight:800;box-shadow:0 4px 14px #0008;pointer-events:auto';
+    document.body.appendChild(root);
+    let open=false;
+    function setOpen(v){open=v;panel.style.display=open?'block':'none';toggle.textContent=open?'×':'☰';toggle.setAttribute('aria-label',open?'Fechar menu':'Abrir menu')}
+    toggle.onclick=()=>setOpen(!open);
+    root.querySelector('#copaBk').onclick=()=>{setOpen(false);backup()};
+    root.querySelector('#copaLd').onclick=()=>{setOpen(false);loadFile()};
+    root.querySelector('#copaHome').onclick=()=>{setOpen(false);location.href='/'};
+    root.querySelector('#copaOut').onclick=()=>{setOpen(false);logout()};
+    document.addEventListener('click',e=>{if(open&&!root.contains(e.target))setOpen(false)});
   }
   if(active())restore(active());
   window.CopaProfiles={active,pname,activate,logout,collect,apply,backup,loadFile,restore,known};
