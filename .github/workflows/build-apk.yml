@@ -1,0 +1,251 @@
+name: Gerar APK Copa Ouro
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar componentes Android
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Criar projeto Android
+        shell: bash
+        run: |
+          set -e
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories { google(); mavenCentral() }
+          }
+          rootProject.name = 'CopaOuroAndroid'
+          include ':app'
+          EOF
+
+          cat > build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.7.3' apply false
+          }
+          EOF
+
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          EOF
+
+          mkdir -p app/src/main/java/com/copaouro/app app/src/main/res/values app/src/main/assets/www
+
+          cat > app/build.gradle <<'EOF'
+          plugins { id 'com.android.application' }
+          android {
+              namespace 'com.copaouro.app'
+              compileSdk 35
+              defaultConfig {
+                  applicationId 'com.copaouro.app'
+                  minSdk 24
+                  targetSdk 35
+                  versionCode 1
+                  versionName '1.0.0'
+              }
+          }
+          EOF
+
+          cat > app/src/main/res/values/strings.xml <<'EOF'
+          <resources><string name="app_name">Copa Ouro</string></resources>
+          EOF
+          cat > app/src/main/res/values/colors.xml <<'EOF'
+          <resources><color name="black">#07150D</color></resources>
+          EOF
+          cat > app/src/main/res/values/styles.xml <<'EOF'
+          <resources>
+            <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+              <item name="android:fontFamily">sans</item>
+              <item name="android:colorAccent">#D4AF37</item>
+              <item name="android:navigationBarColor">#07150D</item>
+              <item name="android:statusBarColor">#07150D</item>
+              <item name="android:windowLightStatusBar">false</item>
+            </style>
+          </resources>
+          EOF
+
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.INTERNET" />
+            <application android:theme="@style/AppTheme" android:label="Copa Ouro" android:usesCleartextTraffic="false" android:allowBackup="true">
+              <activity android:name=".MainActivity" android:screenOrientation="unspecified" android:exported="true">
+                <intent-filter>
+                  <action android:name="android.intent.action.MAIN" />
+                  <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          EOF
+
+          cat > app/src/main/java/com/copaouro/app/MainActivity.java <<'EOF'
+          package com.copaouro.app;
+
+          import android.app.Activity;
+          import android.content.ActivityNotFoundException;
+          import android.content.Intent;
+          import android.net.Uri;
+          import android.os.Bundle;
+          import android.webkit.JavascriptInterface;
+          import android.webkit.MimeTypeMap;
+          import android.webkit.ValueCallback;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebResourceRequest;
+          import android.webkit.WebResourceResponse;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import java.io.ByteArrayInputStream;
+          import java.io.InputStream;
+          import java.nio.charset.StandardCharsets;
+
+          public class MainActivity extends Activity {
+            private static final String HOST="app.local";
+            private WebView web;
+            private ValueCallback<Uri[]> chooser;
+            private String pendingText;
+            private static final int CHOOSE=9001, SAVE=9002;
+
+            @Override public void onCreate(Bundle b){
+              super.onCreate(b);
+              web=new WebView(this); setContentView(web);
+              WebSettings s=web.getSettings();
+              s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setDatabaseEnabled(true);
+              s.setAllowFileAccess(false); s.setAllowContentAccess(true); s.setMediaPlaybackRequiresUserGesture(false);
+              web.addJavascriptInterface(new Bridge(),"AndroidBridge");
+              web.setWebViewClient(new LocalClient());
+              web.setWebChromeClient(new WebChromeClient(){
+                @Override public boolean onShowFileChooser(WebView v,ValueCallback<Uri[]> cb,FileChooserParams p){
+                  if(chooser!=null) chooser.onReceiveValue(null); chooser=cb;
+                  Intent i=p.createIntent();
+                  try{startActivityForResult(i,CHOOSE);}catch(ActivityNotFoundException e){chooser=null;return false;} return true;
+                }
+              });
+              if(b==null) web.loadUrl("https://"+HOST+"/index.html"); else web.restoreState(b);
+            }
+            @Override protected void onSaveInstanceState(Bundle out){web.saveState(out);super.onSaveInstanceState(out);}
+            @Override public void onBackPressed(){if(web.canGoBack())web.goBack();else super.onBackPressed();}
+            @Override protected void onActivityResult(int r,int c,Intent data){
+              super.onActivityResult(r,c,data);
+              if(r==CHOOSE&&chooser!=null){chooser.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(c,data));chooser=null;}
+              if(r==SAVE&&c==RESULT_OK&&data!=null&&pendingText!=null){
+                try(java.io.OutputStream o=getContentResolver().openOutputStream(data.getData())){o.write(pendingText.getBytes(StandardCharsets.UTF_8));}catch(Exception ignored){} pendingText=null;
+              }
+            }
+            private String mime(String p){String e=MimeTypeMap.getFileExtensionFromUrl(p);String m=MimeTypeMap.getSingleton().getMimeTypeFromExtension(e);return m==null?"application/octet-stream":m;}
+            private WebResourceResponse text(int code,String body){return new WebResourceResponse("application/json","UTF-8",code,"Offline",null,new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8)));}
+            private class LocalClient extends WebViewClient{
+              @Override public WebResourceResponse shouldInterceptRequest(WebView v,WebResourceRequest req){
+                Uri u=req.getUrl(); if("https".equals(u.getScheme())&&HOST.equals(u.getHost())){
+                  String p=u.getPath(); if(p==null||p.isEmpty()||"/".equals(p))p="/index.html"; if(p.endsWith("/"))p+="index.html";
+                  if(p.startsWith("/api/")||p.startsWith("/.netlify/"))return text(404,"{\"offline\":true}");
+                  try{InputStream in=getAssets().open("www"+p);return new WebResourceResponse(mime(p),"UTF-8",in);}catch(Exception e){return text(404,"{\"missing\":true}");}
+                } return super.shouldInterceptRequest(v,req);
+              }
+              @Override public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest req){
+                Uri u=req.getUrl(); if(HOST.equals(u.getHost()))return false;
+                if("http".equals(u.getScheme())||"https".equals(u.getScheme())){startActivity(new Intent(Intent.ACTION_VIEW,u));return true;} return false;
+              }
+            }
+            public class Bridge{
+              @JavascriptInterface public void saveTextFile(String name,String text){
+                pendingText=text; Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT); i.addCategory(Intent.CATEGORY_OPENABLE); i.setType("application/json"); i.putExtra(Intent.EXTRA_TITLE,name); startActivityForResult(i,SAVE);
+              }
+            }
+          }
+          EOF
+
+      - name: Baixar módulos atuais da Copa Ouro para dentro do APK
+        shell: bash
+        run: |
+          set -e
+          cd app/src/main/assets/www
+          wget -q --recursive --level=5 --no-parent --no-host-directories --reject="*.map" \
+            https://ourocopa.netlify.app/ \
+            https://ourocopa.netlify.app/copa/ \
+            https://ourocopa.netlify.app/eliminatorias/ \
+            https://ourocopa.netlify.app/mercado/ \
+            https://ourocopa.netlify.app/galeria/ || true
+          test -f copa/index.html
+          test -f eliminatorias/index.html
+          test -f mercado/index.html
+          test -f galeria/index.html
+
+      - name: Criar portal offline do aplicativo
+        shell: bash
+        run: |
+          cat > app/src/main/assets/www/index.html <<'EOF'
+          <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Copa Ouro</title>
+          <style>
+          *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#06180e,#103c21);color:#fff;min-height:100vh}.top{padding:24px 18px 12px;text-align:center}.star{font-size:42px;color:#e5bd3b}.top h1{margin:4px 0;color:#f4d56a}.top p{margin:0;color:#b6cbbd}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:18px}.card{min-height:110px;border:1px solid #a98525;background:linear-gradient(145deg,#0d3420,#112a1c);border-radius:18px;color:#fff;font-weight:700;font-size:17px;padding:18px;text-align:left;box-shadow:0 8px 25px #0005}.card b{display:block;color:#e5bd3b;font-size:26px;margin-bottom:8px}.card.full{grid-column:1/-1}.note{text-align:center;color:#aab9ae;font-size:12px;padding:10px 20px 24px}a{text-decoration:none}.wheelbox{display:none;padding:0 18px 22px}.wheelbox.show{display:block}.wheel{border:1px solid #a98525;border-radius:18px;background:#0b2818;padding:18px;text-align:center}.result{font-size:42px;color:#f4d56a;font-weight:900;min-height:55px}.spin{border:0;border-radius:14px;padding:14px 25px;background:#d4af37;color:#102015;font-size:18px;font-weight:800}.back{display:block;margin:8px auto 0;border:0;background:none;color:#d9c273;padding:10px}
+          </style></head><body><div class="top"><div class="star">★</div><h1>COPA OURO</h1><p>Aplicativo Android • dados salvos neste aparelho</p></div>
+          <div id="menu" class="grid">
+            <a href="/copa/"><div class="card"><b>🏆</b>Copa Ouro</div></a>
+            <a href="/eliminatorias/"><div class="card"><b>⚽</b>Eliminatórias</div></a>
+            <a href="/mercado/"><div class="card"><b>🔄</b>Mercado</div></a>
+            <a href="/galeria/"><div class="card"><b>👑</b>Galeria</div></a>
+            <button class="card full" onclick="openWheel()"><b>🎯</b>Roleta dos Jogos</button>
+          </div>
+          <div id="wheelbox" class="wheelbox"><div class="wheel"><h2>Roleta dos Jogos</h2><div id="result" class="result">—</div><button class="spin" onclick="spin()">GIRAR ROLETA</button><button class="back" onclick="closeWheel()">← Voltar ao menu</button></div></div>
+          <div class="note">O aplicativo funciona sem depender do Netlify depois de instalado. Recursos externos opcionais podem exigir internet.</div>
+          <script>const opts=[...Array.from({length:36},(_,i)=>String(i+1)),'A','B','C','D','E','F','SF'];function openWheel(){menu.style.display='none';wheelbox.classList.add('show')}function closeWheel(){menu.style.display='grid';wheelbox.classList.remove('show')}function spin(){result.textContent='...';setTimeout(()=>result.textContent=opts[Math.floor(Math.random()*opts.length)],450)}</script></body></html>
+          EOF
+
+          cat > app/src/main/assets/www/offline-bridge.js <<'EOF'
+          (function(){window.CopaOuroAndroid={offline:true,version:'1.0.0'};})();
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          for p in Path('app/src/main/assets/www').rglob('*.html'):
+              if p.name=='index.html' and p.parent.name=='www': continue
+              s=p.read_text(errors='ignore')
+              if 'offline-bridge.js' not in s:
+                  s=s.replace('</body>','<script src="/offline-bridge.js"></script></body>')
+                  p.write_text(s)
+          PY
+
+      - name: Compilar APK instalável
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Nomear APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk Copa-Ouro.apk
+
+      - name: Publicar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Copa-Ouro-APK
+          path: Copa-Ouro.apk
+          if-no-files-found: error
+          retention-days: 30
