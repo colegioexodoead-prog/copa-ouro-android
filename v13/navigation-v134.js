@@ -41,6 +41,24 @@
     {key:'galeria',icon:'👑',label:'Galeria',href:'/galeria/'}
   ];
   function highlight(key){document.querySelectorAll('#copaMainNav [data-key]').forEach(a=>a.classList.toggle('active',a.dataset.key===key))}
+  function fixHomeDashboard(){
+    if(path()!=='/'||!window.CopaProfiles||!CopaProfiles.active())return;
+    const grid=document.querySelector('#dash .grid');if(!grid)return;
+    const links=[...grid.querySelectorAll('a')];
+    const roleta=links.find(a=>/Roleta\s*\/\s*Jogos/i.test(a.textContent||''));
+    const galeria=links.find(a=>/Galeria/i.test(a.textContent||''));
+    if(roleta){roleta.href='/eliminatorias/#roletaVagas';roleta.dataset.main='roleta'}
+    if(galeria)galeria.dataset.main='galeria';
+    if(roleta&&galeria)grid.insertBefore(roleta,galeria);
+    const style=document.createElement('style');style.id='copaHomeNav134';style.textContent=`
+      #dash .grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+      #dash .grid .card{min-height:96px!important;padding:14px 10px!important;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;border-width:1px;box-shadow:0 8px 18px #0004}
+      #dash .grid .card b{font-size:30px!important;margin-bottom:6px!important}
+      #dash .grid a[data-main="galeria"]{grid-column:1/-1}
+      #dash .grid a[data-main="galeria"] .card{min-height:78px!important;flex-direction:row;gap:10px}
+      #dash .grid a[data-main="galeria"] .card b{margin:0!important}
+    `;document.head.appendChild(style);
+  }
   function injectMainNav(){
     if(!window.CopaProfiles||!CopaProfiles.active()||path()==='/'||document.getElementById('copaMainNav'))return;
     const style=document.createElement('style');
@@ -85,6 +103,6 @@
       target.scrollIntoView({behavior:'smooth',block:'start'});
     }));
   }
-  ready(()=>{openElimTabFromHash();injectMainNav();injectGalleryQuick()});
+  ready(()=>{fixHomeDashboard();openElimTabFromHash();injectMainNav();injectGalleryQuick()});
   window.addEventListener('hashchange',()=>{openElimTabFromHash();highlight(currentKey())});
 })();
