@@ -1,0 +1,44 @@
+name: Corrigir integridade do seed v1.2
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix-seed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Corrigir caractere do backup compactado
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('seed/seed-v12.json.gz.b64')
+          s = p.read_text(encoding='utf-8')
+          old = 'Tv+Lroo'
+          new = 'Tv+Lgoo'
+          if old in s:
+              p.write_text(s.replace(old, new, 1), encoding='utf-8')
+              Path('/tmp/seed_changed').write_text('1')
+              print('Seed corrigido.')
+          else:
+              Path('/tmp/seed_changed').write_text('0')
+              print('Seed já estava corrigido.')
+          PY
+
+          if [ "$(cat /tmp/seed_changed)" = "1" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add seed/seed-v12.json.gz.b64
+            git commit -m "Corrigir integridade do seed v1.2"
+            git push
+          fi
