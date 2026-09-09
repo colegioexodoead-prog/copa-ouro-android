@@ -57,13 +57,16 @@ jobs:
           cp v13/cloud-sync-v13.js app/src/main/assets/www/cloud-sync-v13.js
           cp v13/index.html app/src/main/assets/www/index.html
           cp seed/seed-v12.json.gz.b64 app/src/main/assets/seed-v13.json.gz.b64
-          base64 -d v13/copa_ouro_icon_256.jpg.b64 > app/src/main/res/drawable-nodpi/copa_ouro_icon_photo.jpg
-          test -s app/src/main/res/drawable-nodpi/copa_ouro_icon_photo.jpg
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('app/src/main/res/drawable-nodpi/copa_ouro_icon_photo.jpg').read_bytes()
-          assert p[:3]==b'\xff\xd8\xff', p[:8]
-          print('ICONE_APROVADO_OK',len(p))
+          import hashlib
+          raw=bytes.fromhex(Path('v13/copa_ouro_icon_144.jpg.hex').read_text().strip())
+          assert raw[:3]==b'\xff\xd8\xff', raw[:8]
+          assert len(raw)==5811, len(raw)
+          assert hashlib.sha256(raw).hexdigest()=='38baa84623daa5c1caf912b028259ea1f2ca85205a150e0a0f0998bc40daf742'
+          out=Path('app/src/main/res/drawable-nodpi/copa_ouro_icon_photo.jpg')
+          out.write_bytes(raw)
+          print('ICONE_APROVADO_OK',len(raw),hashlib.sha256(raw).hexdigest())
           PY
           cat > app/build.gradle <<'EOF'
           plugins { id 'com.android.application' }
@@ -172,6 +175,7 @@ jobs:
           assert 'copaMenuToggle' in profile
           assert '@drawable/copa_ouro_icon_photo' in manifest
           assert icon[:3]==b'\xff\xd8\xff'
+          assert hashlib.sha256(icon).hexdigest()=='38baa84623daa5c1caf912b028259ea1f2ca85205a150e0a0f0998bc40daf742'
           print('ICONE_SHA256',hashlib.sha256(icon).hexdigest())
           print('SEED_PEDRO_KEYS',sorted(src))
           print('VALIDACAO_V133_OK')
@@ -190,7 +194,7 @@ jobs:
           unzip -l "$APK" | grep -q 'assets/www/profile-manager-v13.js'
           unzip -l "$APK" | grep -q 'assets/www/cloud-sync-v13.js'
           unzip -l "$APK" | grep -q 'assets/seed-v13.json.gz.b64'
-          unzip -l "$APK" | grep -q 'res/drawable-nodpi-v4/copa_ouro_icon_photo.jpg'
+          unzip -l "$APK" | grep -q 'copa_ouro_icon_photo'
           mkdir -p dist
           cp "$APK" dist/Copa-Ouro-v1.3.3-FINAL-Senha-Salva-Icone-Aprovado.apk
           sha256sum dist/Copa-Ouro-v1.3.3-FINAL-Senha-Salva-Icone-Aprovado.apk
