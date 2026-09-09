@@ -1,0 +1,209 @@
+name: Gerar APK Copa Ouro v1.3.4 Navegacao
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar Android 35
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Montar projeto Android v1.3.4
+        shell: bash
+        run: |
+          set -e
+          cat > settings.gradle <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name='CopaOuroV134'
+          include ':app'
+          EOF
+          cat > build.gradle <<'EOF'
+          plugins { id 'com.android.application' version '8.7.3' apply false }
+          EOF
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          EOF
+          mkdir -p app/src/main/java/com/copaouro/app/v13 app/src/main/res/values app/src/main/res/drawable-nodpi app/src/main/assets/www
+          cp v13/MainActivity.java app/src/main/java/com/copaouro/app/v13/MainActivity.java
+          cp v13/profile-manager-v13.js app/src/main/assets/www/profile-manager-v13.js
+          cp v13/cloud-sync-v13.js app/src/main/assets/www/cloud-sync-v13.js
+          cp v13/navigation-v134.js app/src/main/assets/www/navigation-v134.js
+          cp v13/index.html app/src/main/assets/www/index.html
+          cp seed/seed-v12.json.gz.b64 app/src/main/assets/seed-v13.json.gz.b64
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          parts=sorted(Path('v13/icon-parts').glob('part*.hex'))
+          assert len(parts)==12
+          raw=bytes.fromhex(''.join(p.read_text().strip() for p in parts))
+          sha=hashlib.sha256(raw).hexdigest()
+          assert len(raw)==5811
+          assert sha=='38baa84623daa5c1caf912b028259ea1f2ca85205a150e0a0f0998bc40daf742'
+          Path('app/src/main/res/drawable-nodpi/copa_ouro_icon_photo.jpg').write_bytes(raw)
+          print('ICONE_OK',len(raw),sha)
+          PY
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app/src/main/assets/www/index.html')
+          s=p.read_text()
+          s=s.replace('Copa Ouro 1.3.3','Copa Ouro 1.3.4').replace('Android v1.3.3','Android v1.3.4')
+          if 'navigation-v134.js' not in s:
+              s=s.replace('</body>','<script src="/navigation-v134.js"></script></body>')
+          p.write_text(s)
+          PY
+          cat > app/build.gradle <<'EOF'
+          plugins { id 'com.android.application' }
+          android {
+            namespace 'com.copaouro.app.v13'
+            compileSdk 35
+            defaultConfig {
+              applicationId 'com.copaouro.app.v134'
+              minSdk 24
+              targetSdk 35
+              versionCode 17
+              versionName '1.3.4'
+            }
+          }
+          EOF
+          cat > app/src/main/res/values/strings.xml <<'EOF'
+          <resources><string name="app_name">Copa Ouro 1.3.4</string></resources>
+          EOF
+          cat > app/src/main/res/values/styles.xml <<'EOF'
+          <resources><style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:colorAccent">#D4AF37</item><item name="android:navigationBarColor">#07150D</item><item name="android:statusBarColor">#07150D</item><item name="android:windowLightStatusBar">false</item></style></resources>
+          EOF
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.INTERNET" />
+            <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+            <application android:theme="@style/AppTheme" android:label="Copa Ouro 1.3.4" android:icon="@drawable/copa_ouro_icon_photo" android:roundIcon="@drawable/copa_ouro_icon_photo" android:usesCleartextTraffic="false" android:allowBackup="true">
+              <activity android:name="com.copaouro.app.v13.MainActivity" android:exported="true">
+                <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          EOF
+
+      - name: Baixar modulos atuais
+        shell: bash
+        run: |
+          set -e
+          cd app/src/main/assets/www
+          wget -q --recursive --level=5 --no-parent --no-host-directories --reject="*.map" \
+            https://ourocopa.netlify.app/copa/ \
+            https://ourocopa.netlify.app/eliminatorias/ \
+            https://ourocopa.netlify.app/mercado/ \
+            https://ourocopa.netlify.app/galeria/ || true
+          test -f copa/index.html
+          test -f eliminatorias/index.html
+          test -f mercado/index.html
+          test -f galeria/index.html
+
+      - name: Injetar perfis nuvem e nova navegacao
+        shell: bash
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('app/src/main/assets/www')
+          for p in root.rglob('*.html'):
+              if p==root/'index.html': continue
+              s=p.read_text(errors='ignore')
+              for old in ['<script src="/sync-bridge.js"></script>','<script src="sync-bridge.js"></script>','<script src="/online-sync-bridge.js"></script>']:
+                  s=s.replace(old,'')
+              if 'profile-manager-v13.js' not in s:
+                  s=s.replace('<head>','<head><script src="/profile-manager-v13.js"></script>',1) if '<head>' in s else '<script src="/profile-manager-v13.js"></script>'+s
+              if 'navigation-v134.js' not in s:
+                  s=s.replace('</body>','<script src="/navigation-v134.js"></script></body>') if '</body>' in s else s+'<script src="/navigation-v134.js"></script>'
+              if 'cloud-sync-v13.js' not in s:
+                  s=s.replace('</body>','<script src="/cloud-sync-v13.js"></script></body>') if '</body>' in s else s+'<script src="/cloud-sync-v13.js"></script>'
+              p.write_text(s)
+          PY
+
+      - name: Validar roleta navegacao galeria e dados
+        shell: bash
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64,gzip,json,hashlib
+          root=Path('app/src/main/assets/www')
+          home=(root/'index.html').read_text()
+          nav=(root/'navigation-v134.js').read_text()
+          elim=(root/'eliminatorias/index.html').read_text(errors='ignore')
+          gal=(root/'galeria/index.html').read_text(errors='ignore')
+          profile=(root/'profile-manager-v13.js').read_text()
+          cloud=(root/'cloud-sync-v13.js').read_text()
+          icon=Path('app/src/main/res/drawable-nodpi/copa_ouro_icon_photo.jpg').read_bytes()
+          seed=json.loads(gzip.decompress(base64.b64decode(Path('app/src/main/assets/seed-v13.json.gz.b64').read_text().strip())))
+          data=seed.get('local') or seed.get('remote') or {}
+          required={'elimCopaOuro','copaOuroQualified','copaOuroTeamDraft','copa-ouro-edicoes-v1','copaOuroMercadoV2'}
+          assert required.issubset(data)
+          assert 'Salvar senha neste aparelho' in home
+          assert 'navigation-v134.js' in home
+          assert '/eliminatorias/#roletaVagas' in nav
+          assert "window.showTab('roletaVagas')" in nav
+          assert 'id="roletaVagas"' in elim
+          assert 'Girar roleta' in elim
+          assert 'Campeões' in nav and 'Ranking' in nav and 'Gráficos' in nav and 'Jejum' in nav and 'Federações' in nav
+          assert 'copaGalleryQuick' in nav and 'copaMainNav' in nav
+          assert 'copaSavedPasswordV132:' in profile
+          assert 'copaProfileStateV13_' in cloud
+          for p in [root/'copa/index.html',root/'eliminatorias/index.html',root/'mercado/index.html',root/'galeria/index.html']:
+              assert 'navigation-v134.js' in p.read_text(errors='ignore'), p
+          assert hashlib.sha256(icon).hexdigest()=='38baa84623daa5c1caf912b028259ea1f2ca85205a150e0a0f0998bc40daf742'
+          print('VALIDACAO_V134_OK')
+          PY
+
+      - name: Compilar APK v1.3.4
+        run: gradle --no-daemon :app:assembleDebug
+
+      - name: Validar e preparar APK final
+        shell: bash
+        run: |
+          set -e
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          unzip -l "$APK" | grep -q 'assets/www/index.html'
+          unzip -l "$APK" | grep -q 'assets/www/navigation-v134.js'
+          unzip -l "$APK" | grep -q 'assets/www/eliminatorias/index.html'
+          unzip -l "$APK" | grep -q 'assets/www/galeria/index.html'
+          unzip -l "$APK" | grep -q 'assets/seed-v13.json.gz.b64'
+          unzip -l "$APK" | grep -q 'copa_ouro_icon_photo'
+          mkdir -p dist
+          cp "$APK" dist/Copa-Ouro-v1.3.4-Roleta-Navegacao-Galeria.apk
+          sha256sum dist/Copa-Ouro-v1.3.4-Roleta-Navegacao-Galeria.apk
+
+      - name: Publicar APK v1.3.4
+        uses: actions/upload-artifact@v4
+        with:
+          name: Copa-Ouro-v1.3.4-Roleta-Navegacao-Galeria
+          path: dist/Copa-Ouro-v1.3.4-Roleta-Navegacao-Galeria.apk
+          retention-days: 30
