@@ -1,4 +1,4 @@
-name: Gerar APK Copa Ouro v1.2 Release
+name: Gerar APK Copa Ouro v1.2 Cloud
 
 on:
   push:
@@ -34,18 +34,156 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Montar projeto v1.2
+      - name: Criar projeto Android v1.2
+        shell: bash
         run: |
           set -e
-          cat template/v12parts/*.b64 > /tmp/v12-template.tar.gz.b64
-          test "$(wc -c < /tmp/v12-template.tar.gz.b64)" -eq 36024
-          echo "6c73cac5d9cc79c677ead020ec245ccd79b8eadb710412312d0b43415687c69c  /tmp/v12-template.tar.gz.b64" | sha256sum -c -
-          base64 -d /tmp/v12-template.tar.gz.b64 > /tmp/v12-template.tar.gz
-          gzip -t /tmp/v12-template.tar.gz
-          tar -xzf /tmp/v12-template.tar.gz
-          mkdir -p app/src/main/assets/www
+          cat > settings.gradle <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name='CopaOuroAndroid'
+          include ':app'
+          EOF
 
-      - name: Incorporar módulos da Copa Ouro
+          cat > build.gradle <<'EOF'
+          plugins { id 'com.android.application' version '8.7.3' apply false }
+          EOF
+
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          EOF
+
+          mkdir -p app/src/main/java/com/copaouro/app app/src/main/res/values app/src/main/assets/www
+          cp seed/seed-v12.json.gz.b64 app/src/main/assets/seed-v12.json.gz.b64
+
+          cat > app/build.gradle <<'EOF'
+          plugins { id 'com.android.application' }
+          android {
+            namespace 'com.copaouro.app.cloud'
+            compileSdk 35
+            defaultConfig {
+              applicationId 'com.copaouro.app.cloud'
+              minSdk 24
+              targetSdk 35
+              versionCode 3
+              versionName '1.2.0'
+            }
+          }
+          EOF
+
+          cat > app/src/main/res/values/strings.xml <<'EOF'
+          <resources><string name="app_name">Copa Ouro 1.2</string></resources>
+          EOF
+          cat > app/src/main/res/values/styles.xml <<'EOF'
+          <resources><style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:colorAccent">#D4AF37</item><item name="android:navigationBarColor">#07150D</item><item name="android:statusBarColor">#07150D</item><item name="android:windowLightStatusBar">false</item></style></resources>
+          EOF
+
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.INTERNET" />
+            <application android:theme="@style/AppTheme" android:label="Copa Ouro 1.2" android:usesCleartextTraffic="false" android:allowBackup="true">
+              <activity android:name=".MainActivity" android:exported="true">
+                <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          EOF
+
+          cat > app/src/main/java/com/copaouro/app/MainActivity.java <<'EOF'
+          package com.copaouro.app;
+
+          import android.app.Activity;
+          import android.content.*;
+          import android.net.Uri;
+          import android.os.Bundle;
+          import android.util.Base64;
+          import android.webkit.*;
+          import java.io.*;
+          import java.net.*;
+          import java.nio.charset.StandardCharsets;
+          import java.util.zip.GZIPInputStream;
+          import org.json.JSONObject;
+
+          public class MainActivity extends Activity {
+            private static final String HOST="app.local";
+            private static final String API="https://ourocopa.netlify.app";
+            private WebView web;
+            private ValueCallback<Uri[]> chooser;
+            private String pendingText;
+            private static final int CHOOSE=9001,SAVE=9002;
+            private boolean seeded=false;
+            private SharedPreferences prefs;
+
+            @Override public void onCreate(Bundle b){
+              super.onCreate(b);
+              prefs=getSharedPreferences("copa_cloud",MODE_PRIVATE);
+              web=new WebView(this); setContentView(web);
+              WebSettings s=web.getSettings();
+              s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setDatabaseEnabled(true); s.setAllowFileAccess(false); s.setAllowContentAccess(true);
+              web.addJavascriptInterface(new Bridge(),"AndroidBridge");
+              web.setWebViewClient(new LocalClient());
+              web.setWebChromeClient(new WebChromeClient(){
+                @Override public boolean onShowFileChooser(WebView v,ValueCallback<Uri[]> cb,FileChooserParams p){
+                  if(chooser!=null)chooser.onReceiveValue(null); chooser=cb;
+                  try{startActivityForResult(p.createIntent(),CHOOSE);}catch(Exception e){chooser=null;return false;} return true;
+                }
+              });
+              if(b==null)web.loadUrl("https://"+HOST+"/index.html");else web.restoreState(b);
+            }
+            @Override protected void onSaveInstanceState(Bundle out){web.saveState(out);super.onSaveInstanceState(out);}
+            @Override public void onBackPressed(){if(web.canGoBack())web.goBack();else super.onBackPressed();}
+            @Override protected void onActivityResult(int r,int c,Intent data){super.onActivityResult(r,c,data);if(r==CHOOSE&&chooser!=null){chooser.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(c,data));chooser=null;}if(r==SAVE&&c==RESULT_OK&&data!=null&&pendingText!=null){try(OutputStream o=getContentResolver().openOutputStream(data.getData())){o.write(pendingText.getBytes(StandardCharsets.UTF_8));}catch(Exception ignored){}pendingText=null;}}
+
+            private String mime(String p){String e=MimeTypeMap.getFileExtensionFromUrl(p);String m=MimeTypeMap.getSingleton().getMimeTypeFromExtension(e);return m==null?"application/octet-stream":m;}
+            private WebResourceResponse text(int code,String body){return new WebResourceResponse("application/json","UTF-8",code,"Offline",null,new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8)));}
+            private void emit(String js){web.post(()->web.evaluateJavascript(js,null));}
+            private String q(String s){return JSONObject.quote(s==null?"":s);}
+
+            private String readSeed(){
+              try(InputStream in=getAssets().open("seed-v12.json.gz.b64")){
+                BufferedReader br=new BufferedReader(new InputStreamReader(in,StandardCharsets.UTF_8));StringBuilder b=new StringBuilder();String line;
+                while((line=br.readLine())!=null)b.append(line.trim());
+                byte[] zipped=Base64.decode(b.toString(),Base64.DEFAULT);
+                try(GZIPInputStream gz=new GZIPInputStream(new ByteArrayInputStream(zipped));BufferedReader jr=new BufferedReader(new InputStreamReader(gz,StandardCharsets.UTF_8))){StringBuilder j=new StringBuilder();while((line=jr.readLine())!=null)j.append(line);return j.toString();}
+              }catch(Exception e){return null;}
+            }
+            private void seedLocal(WebView v){
+              if(seeded)return;seeded=true;String json=readSeed();if(json==null)return;
+              String js="(function(){try{const M='copaOuroAppSeedV12';const p="+json+";let a=0;if(localStorage.getItem(M)!=='1'){for(const [k,v] of Object.entries(p.local||p.remote||{})){if(v!=null&&localStorage.getItem(k)==null){localStorage.setItem(k,v);a++;}}if(localStorage.getItem('copaOuroOnlineSyncEnabled')==null)localStorage.setItem('copaOuroOnlineSyncEnabled','1');localStorage.setItem(M,'1');}localStorage.setItem('copaOuroAppVersion','1.2.0');return String(a);}catch(e){return '-1';}})();";
+              v.evaluateJavascript(js,val->{if(val!=null&&!"\"0\"".equals(val)&&!"\"-1\"".equals(val))v.postDelayed(()->v.reload(),150);});
+            }
+
+            private HttpURLConnection conn(String path,String method) throws Exception{
+              HttpURLConnection c=(HttpURLConnection)new URL(API+path).openConnection();c.setConnectTimeout(10000);c.setReadTimeout(10000);c.setRequestMethod(method);c.setRequestProperty("Accept","application/json");
+              String cookie=prefs.getString("cookie","");if(!cookie.isEmpty())c.setRequestProperty("Cookie",cookie);return c;
+            }
+            private String readBody(HttpURLConnection c)throws Exception{InputStream in=(c.getResponseCode()>=400?c.getErrorStream():c.getInputStream());if(in==null)return "";try(BufferedReader r=new BufferedReader(new InputStreamReader(in,StandardCharsets.UTF_8))){StringBuilder b=new StringBuilder();String l;while((l=r.readLine())!=null)b.append(l);return b.toString();}}
+            private boolean loginCloud(String pass){
+              try{HttpURLConnection c=conn("/api/auth/login","POST");c.setDoOutput(true);c.setRequestProperty("Content-Type","application/json");byte[] body=new JSONObject().put("password",pass).toString().getBytes(StandardCharsets.UTF_8);try(OutputStream o=c.getOutputStream()){o.write(body);}int code=c.getResponseCode();if(code!=200)return false;String set=c.getHeaderField("Set-Cookie");if(set==null)return false;String cookie=set.split(";",2)[0];prefs.edit().putString("cookie",cookie).apply();return true;}catch(Exception e){return false;}
+            }
+            private void cloudGetAsync(){new Thread(()->{try{HttpURLConnection c=conn("/api/state","GET");int code=c.getResponseCode();String body=readBody(c);if(code==401){prefs.edit().remove("cookie").apply();emit("window.CopaCloudGetResult&&window.CopaCloudGetResult(false,'AUTH')");return;}if(code!=200){emit("window.CopaCloudGetResult&&window.CopaCloudGetResult(false,'NET')");return;}String b64=Base64.encodeToString(body.getBytes(StandardCharsets.UTF_8),Base64.NO_WRAP);emit("window.CopaCloudGetResult&&window.CopaCloudGetResult(true,"+q(b64)+")");}catch(Exception e){emit("window.CopaCloudGetResult&&window.CopaCloudGetResult(false,'NET')");}}).start();}
+            private void cloudPutAsync(String key,String value){new Thread(()->{try{HttpURLConnection c=conn("/api/state","PUT");c.setDoOutput(true);c.setRequestProperty("Content-Type","application/json");byte[] body=new JSONObject().put("key",key).put("value",value).toString().getBytes(StandardCharsets.UTF_8);try(OutputStream o=c.getOutputStream()){o.write(body);}int code=c.getResponseCode();readBody(c);if(code==401){prefs.edit().remove("cookie").apply();emit("window.CopaCloudPutResult&&window.CopaCloudPutResult("+q(key)+",false,'AUTH')");return;}emit("window.CopaCloudPutResult&&window.CopaCloudPutResult("+q(key)+","+(code==200?"true":"false")+",'NET')");}catch(Exception e){emit("window.CopaCloudPutResult&&window.CopaCloudPutResult("+q(key)+",false,'NET')");}}).start();}
+
+            private class LocalClient extends WebViewClient{
+              @Override public WebResourceResponse shouldInterceptRequest(WebView v,WebResourceRequest req){Uri u=req.getUrl();if("https".equals(u.getScheme())&&HOST.equals(u.getHost())){String p=u.getPath();if(p==null||p.isEmpty()||"/".equals(p))p="/index.html";if(p.endsWith("/"))p+="index.html";if(p.startsWith("/api/")||p.startsWith("/.netlify/"))return text(404,"{\"local\":true}");try{InputStream in=getAssets().open("www"+p);return new WebResourceResponse(mime(p),"UTF-8",in);}catch(Exception e){return text(404,"{\"missing\":true}");}}return super.shouldInterceptRequest(v,req);}
+              @Override public void onPageFinished(WebView v,String url){super.onPageFinished(v,url);if(url!=null&&url.startsWith("https://"+HOST+"/"))seedLocal(v);}
+              @Override public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest req){Uri u=req.getUrl();if(HOST.equals(u.getHost()))return false;if("http".equals(u.getScheme())||"https".equals(u.getScheme())){startActivity(new Intent(Intent.ACTION_VIEW,u));return true;}return false;}
+            }
+
+            public class Bridge{
+              @JavascriptInterface public void saveTextFile(String name,String text){pendingText=text;Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/json");i.putExtra(Intent.EXTRA_TITLE,name);startActivityForResult(i,SAVE);}
+              @JavascriptInterface public boolean cloudHasSession(){return !prefs.getString("cookie","").isEmpty();}
+              @JavascriptInterface public void cloudLogin(String password){new Thread(()->{boolean ok=loginCloud(password);emit("window.CopaCloudLoginResult&&window.CopaCloudLoginResult("+(ok?"true":"false")+")");}).start();}
+              @JavascriptInterface public void cloudGet(){cloudGetAsync();}
+              @JavascriptInterface public void cloudPut(String key,String value){cloudPutAsync(key,value);}
+              @JavascriptInterface public void cloudLogout(){prefs.edit().remove("cookie").apply();}
+            }
+          }
+          EOF
+
+      - name: Baixar módulos da Copa Ouro
+        shell: bash
         run: |
           set -e
           cd app/src/main/assets/www
@@ -59,19 +197,55 @@ jobs:
           test -f eliminatorias/index.html
           test -f mercado/index.html
           test -f galeria/index.html
-          cd ../../../../../
-          python3 tools/inject.py
 
-      - name: Compilar APK release
-        run: gradle :app:assembleRelease --stacktrace
+      - name: Adicionar sincronização automática
+        shell: bash
+        run: |
+          cat > app/src/main/assets/www/online-sync-bridge.js <<'EOF'
+          (function(){
+            const keys=['elimCopaOuro','copaOuroQualified','copaOuroV3','copaOuroTeamDraft','copaOuroHistory','copa-ouro-edicoes-v1','copaOuroMercadoV2','copaOuroTeamCountryMapV1'];
+            const cache={},pending={}; let ready=false,saving=false;
+            const B=window.AndroidBridge;
+            function status(t,ok=true){let e=document.getElementById('cloudStatus')||document.getElementById('saveStatus')||document.getElementById('saved');if(e){e.textContent=(ok?'☁️ ':'⚠️ ')+t;e.style.display='block';}}
+            function decode(b){const a=Uint8Array.from(atob(b),c=>c.charCodeAt(0));return new TextDecoder().decode(a)}
+            function getCloud(){if(!B||!B.cloudHasSession()){ready=true;status('Salvo no aparelho • nuvem aguardando conexão',false);return;}ready=false;B.cloudGet();}
+            window.CopaCloudLoginResult=function(ok){if(ok){status('Nuvem conectada');getCloud();}else status('Senha incorreta ou conexão indisponível',false)};
+            window.CopaCloudGetResult=function(ok,data){if(!ok){ready=true;status(data==='AUTH'?'Sessão da nuvem expirou • reconecte':'Salvo no aparelho • sincronização aguardando internet',false);return;}try{const j=JSON.parse(decode(data));let changed=false;for(const k of keys){const local=localStorage.getItem(k),remote=j.states?j.states[k]:null;if(remote!=null){cache[k]=remote;if(local!==remote){localStorage.setItem(k,remote);changed=true;}}else if(local!=null){pending[k]=local;B.cloudPut(k,local);}}ready=true;status('Salvamento online automático ativo');if(changed&&!sessionStorage.getItem('cloud-sync-reloaded')){sessionStorage.setItem('cloud-sync-reloaded','1');setTimeout(()=>location.reload(),180);}}catch(e){ready=true;status('Erro ao ler backup online',false)}};
+            window.CopaCloudPutResult=function(k,ok,why){if(ok){cache[k]=pending[k];delete pending[k];status('Salvo online automaticamente');}else{delete pending[k];if(why==='AUTH')status('Sessão da nuvem expirou • reconecte',false);else status('Salvo no aparelho • aguardando internet',false);}};
+            window.CopaOuroCloudLogin=function(){const p=prompt('Digite a senha da Copa Ouro para ativar o salvamento online:');if(p)B.cloudLogin(p)};
+            setInterval(()=>{if(!B||!ready||saving||!B.cloudHasSession())return;saving=true;try{for(const k of keys){if(pending[k]!=null)continue;const v=localStorage.getItem(k);if(v!=null&&cache[k]!==v){pending[k]=v;B.cloudPut(k,v);}}}finally{saving=false}},1800);
+            window.addEventListener('online',()=>{if(B&&B.cloudHasSession())getCloud()});
+            getCloud();
+          })();
+          EOF
+
+          cat > app/src/main/assets/www/index.html <<'EOF'
+          <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Copa Ouro</title><style>*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(145deg,#06180e,#103c21);color:#fff;min-height:100vh}.top{padding:24px 18px 10px;text-align:center}.star{font-size:42px;color:#e5bd3b}.top h1{margin:4px 0;color:#f4d56a}.top p{margin:3px;color:#b6cbbd}.version{display:inline-block;margin-top:7px;padding:5px 9px;border:1px solid #9b7b22;border-radius:20px;color:#f4d56a;font-size:12px}.cloud{margin:12px auto 0;max-width:430px;padding:11px;border:1px solid #55765e;border-radius:14px;background:#0a2517}.cloud button{margin-top:7px;border:0;border-radius:10px;padding:9px 14px;background:#d4af37;color:#102015;font-weight:800}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:18px}.card{min-height:105px;border:1px solid #a98525;background:linear-gradient(145deg,#0d3420,#112a1c);border-radius:18px;color:#fff;font-weight:700;font-size:17px;padding:18px;text-align:left}.card b{display:block;color:#e5bd3b;font-size:26px;margin-bottom:8px}.card.full{grid-column:1/-1}a{text-decoration:none}.note{text-align:center;color:#aab9ae;font-size:12px;padding:0 20px 24px}</style></head><body><div class="top"><div class="star">★</div><h1>COPA OURO</h1><p>Aplicativo Android • salvamento local permanente</p><span class="version">VERSÃO 1.2</span><div class="cloud"><div id="cloudStatus">☁️ Verificando nuvem...</div><button onclick="CopaOuroCloudLogin()">CONECTAR / RECONECTAR NUVEM</button></div></div><div class="grid"><a href="/copa/"><div class="card"><b>🏆</b>Copa Ouro</div></a><a href="/eliminatorias/"><div class="card"><b>⚽</b>Eliminatórias</div></a><a href="/mercado/"><div class="card"><b>🔄</b>Mercado</div></a><a href="/galeria/"><div class="card"><b>👑</b>Galeria</div></a><a href="/copa/"><div class="card full"><b>🎯</b>Roleta / Jogos</div></a></div><div class="note">Backup incorporado. Sem internet, continua salvando no aparelho. Com a nuvem conectada, sincroniza automaticamente.</div><script src="/online-sync-bridge.js"></script></body></html>
+          EOF
+
+          python3 - <<'PY'
+          from pathlib import Path
+          for p in Path('app/src/main/assets/www').rglob('*.html'):
+              if p.parent.name=='www' and p.name=='index.html':
+                  continue
+              s=p.read_text(errors='ignore')
+              s=s.replace('<script src="/sync-bridge.js"></script>','')
+              s=s.replace('<script src="sync-bridge.js"></script>','')
+              if 'online-sync-bridge.js' not in s:
+                  s=s.replace('</body>','<script src="/online-sync-bridge.js"></script></body>')
+              p.write_text(s)
+          PY
+
+      - name: Compilar APK instalável v1.2
+        run: gradle :app:assembleDebug --stacktrace
 
       - name: Preparar APK
-        run: cp app/build/outputs/apk/release/app-release-unsigned.apk Copa-Ouro-v1.2-UNSIGNED.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk Copa-Ouro-v1.2-Cloud.apk
 
       - name: Publicar APK
         uses: actions/upload-artifact@v4
         with:
-          name: Copa-Ouro-v1.2-UNSIGNED
-          path: Copa-Ouro-v1.2-UNSIGNED.apk
+          name: Copa-Ouro-APK-v1.2-Cloud
+          path: Copa-Ouro-v1.2-Cloud.apk
           if-no-files-found: error
           retention-days: 30
