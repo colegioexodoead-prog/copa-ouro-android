@@ -63,7 +63,7 @@ jobs:
             namespace 'com.copaouro.app.v13'
             compileSdk 35
             defaultConfig {
-              applicationId 'com.copaouro.app.v13'
+              applicationId 'com.copaouro.app.v131'
               minSdk 24
               targetSdk 35
               versionCode 14
@@ -145,8 +145,10 @@ jobs:
           home=Path('app/src/main/assets/www/index.html').read_text()
           cloud=Path('app/src/main/assets/www/cloud-sync-v13.js').read_text()
           profile=Path('app/src/main/assets/www/profile-manager-v13.js').read_text()
+          gradle=Path('app/build.gradle').read_text()
           assert 'package com.copaouro.app.v13;' in java
           assert 'copaProfile:pedro:' in java
+          assert "applicationId 'com.copaouro.app.v131'" in gradle
           assert home.index('Pedro Henrique') < home.index('Maju') < home.index('Convidado')
           assert 'RECOVERY_HASH' in home and 'recoverPassword' in home
           assert 'GOLDEPLACA' not in home
@@ -173,12 +175,12 @@ jobs:
           unzip -l "$APK" | grep -q 'assets/www/cloud-sync-v13.js'
           unzip -l "$APK" | grep -q 'assets/seed-v13.json.gz.b64'
           mkdir -p dist
-          cp "$APK" dist/Copa-Ouro-v1.3.1-Usuarios-Recuperacao-Menu.apk
-          sha256sum dist/Copa-Ouro-v1.3.1-Usuarios-Recuperacao-Menu.apk
+          cp "$APK" dist/Copa-Ouro-v1.3.1-Usuarios-Recuperacao-Menu-PARALELO.apk
+          sha256sum dist/Copa-Ouro-v1.3.1-Usuarios-Recuperacao-Menu-PARALELO.apk
 
       - name: Publicar APK v1.3.1
         uses: actions/upload-artifact@v4
         with:
-          name: Copa-Ouro-APK-v1.3.1-CORRIGIDO
-          path: dist/Copa-Ouro-v1.3.1-Usuarios-Recuperacao-Menu.apk
+          name: Copa-Ouro-APK-v1.3.1-PARALELO
+          path: dist/Copa-Ouro-v1.3.1-Usuarios-Recuperacao-Menu-PARALELO.apk
           retention-days: 30
