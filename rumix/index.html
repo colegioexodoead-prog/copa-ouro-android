@@ -1,0 +1,50 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Rumi Mix Online</title><link rel="stylesheet" href="style.css"><script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script></head><body>
+<div class="app">
+  <div class="brand"><div class="logo">🎲</div><div><h1>Rumi Mix Online</h1><p>Jogo original de peças inspirado em jogos de sequências e grupos</p></div></div>
+
+  <section id="home" class="panel">
+    <h2>Escolha como jogar</h2>
+    <div class="grid" id="modes">
+      <div class="mode active" data-mode="classic"><h3>🔢 Números Clássico</h3><small>Sequências da mesma cor e grupos do mesmo número. Para 5–8 jogadores o conjunto cresce automaticamente.</small></div>
+      <div class="mode" data-mode="words"><h3>🔤 Letras & Palavras</h3><small>Monte palavras de 3 ou mais letras. A mesa confirma a formação; não depende de dicionário externo.</small></div>
+      <div class="mode" data-mode="mixed"><h3>🔀 Misto</h3><small>Na mesma partida valem grupos numéricos, palavras e códigos A-1-B-2-C-3.</small></div>
+    </div>
+    <div class="top-space grid">
+      <div><label>Seu nome</label><input id="name" class="input" maxlength="18" placeholder="Ex.: Mateus"></div>
+      <div><label>Código da sala (para entrar)</label><input id="joinCode" class="input" maxlength="8" placeholder="ABC123" autocapitalize="characters"></div>
+    </div>
+    <div class="row top-space">
+      <button id="createBtn" class="btn primary">Criar sala online</button>
+      <button id="joinBtn" class="btn green">Entrar na sala</button>
+    </div>
+    <div id="homeNotice" class="notice hide"></div>
+    <div class="footer-note">Requer internet. Nesta versão, o celular do anfitrião mantém a sala ativa; se ele fechar o app, a partida é interrompida.</div>
+  </section>
+
+  <section id="lobby" class="panel hide">
+    <div class="statusbar"><div><div class="muted">SALA</div><div id="roomCode" class="room-code">------</div></div><span id="lobbyMode" class="pill"></span></div>
+    <div class="row"><button id="shareBtn" class="btn primary">📨 Compartilhar convite</button><button id="copyBtn" class="btn">Copiar código</button></div>
+    <h3>Jogadores <span id="playerCount">0/8</span></h3>
+    <div id="lobbyPlayers" class="players"></div>
+    <div id="lobbyNotice" class="notice hide"></div>
+    <div class="row"><button id="startBtn" class="btn green hide">▶ Iniciar partida</button><button id="leaveBtn" class="btn red">Sair</button></div>
+  </section>
+
+  <section id="game" class="hide">
+    <div class="panel">
+      <div class="statusbar"><div><b id="turnText">Aguardando...</b><div class="muted" id="gameMeta"></div></div><div><span class="pill">Monte: <b id="deckCount">0</b></span></div></div>
+      <div id="gamePlayers" class="players"></div>
+      <div id="gameNotice" class="notice hide"></div>
+      <div id="table" class="table"></div>
+      <div class="rack-wrap"><div class="muted">SUAS PEÇAS — toque na ordem em que deseja jogar</div><div id="rack" class="rack"></div></div>
+      <div class="actions">
+        <button id="playBtn" class="btn green">Baixar seleção</button>
+        <button id="undoBtn" class="btn">↶ Desfazer baixadas</button>
+        <button id="endBtn" class="btn primary">Finalizar jogada</button>
+        <button id="drawBtn" class="btn">Comprar peça</button>
+      </div>
+      <div class="top-space"><b>Histórico</b><div id="log" class="log"></div></div>
+    </div>
+  </section>
+</div>
+<script src="app.js"></script></body></html>
