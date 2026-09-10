@@ -32,6 +32,11 @@ jobs:
         with:
           gradle-version: 8.9
 
+      - name: Corrigir manifest de release
+        run: |
+          sed -i 's/android:allowBackup="false"/android:allowBackup="false">/' rumix-v041/build-rumix-v041-safe.sh
+          sed -i '/android:debuggable="false">/d' rumix-v041/build-rumix-v041-safe.sh
+
       - name: Compilar, assinar e validar SAFE
         run: bash rumix-v041/build-rumix-v041-safe.sh
 
