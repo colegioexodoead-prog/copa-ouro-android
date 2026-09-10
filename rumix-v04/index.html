@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>Rumi Mix Arena</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="hero">
+      <div class="hero-top">
+        <div class="brand-mark">🎲</div>
+        <div>
+          <div class="eyebrow">Rumi Mix Arena</div>
+          <h1>Layout novo e jogabilidade melhorada</h1>
+          <p>Tabuleiro digital com peças grandes, rack de madeira, mesa azul e controles rápidos para jogar com fluidez.</p>
+        </div>
+      </div>
+      <div class="hero-badges">
+        <span class="badge">Até 8 jogadores</span>
+        <span class="badge">Single Player</span>
+        <span class="badge">Treino</span>
+        <span class="badge">MegaRumiX</span>
+      </div>
+    </header>
+
+    <main>
+      <section id="home" class="panel">
+        <h2>Como deseja jogar?</h2>
+
+        <div class="section-title">1) Tipo de partida</div>
+        <div id="playKinds" class="choice-grid kinds-grid">
+          <button class="kind-card active" data-kind="online">
+            <span class="kind-icon">🌐</span>
+            <b>Online</b>
+            <small>Crie sala ou entre por convite</small>
+          </button>
+          <button class="kind-card" data-kind="solo">
+            <span class="kind-icon">🤖</span>
+            <b>Single Player</b>
+            <small>Jogue contra 1 a 3 CPUs</small>
+          </button>
+          <button class="kind-card" data-kind="training">
+            <span class="kind-icon">🎯</span>
+            <b>Treino</b>
+            <small>Aprenda combinações e pratique</small>
+          </button>
+        </div>
+
+        <div class="section-title">2) Modo do jogo</div>
+        <div id="modes" class="choice-grid">
+          <button class="mode-card active" data-mode="classic">
+            <span class="mode-chip">🔢</span>
+            <b>Clássico</b>
+            <small>Números, grupos e sequências</small>
+          </button>
+          <button class="mode-card" data-mode="words">
+            <span class="mode-chip">🔤</span>
+            <b>Letras</b>
+            <small>Palavras e combinações com letras</small>
+          </button>
+          <button class="mode-card" data-mode="mixed">
+            <span class="mode-chip">🔀</span>
+            <b>Misto</b>
+            <small>Letras + números no mesmo jogo</small>
+          </button>
+          <button class="mode-card mega" data-mode="mega">
+            <span class="mode-chip">⚡</span>
+            <b>MegaRumiX</b>
+            <small>Cartas e roleta com efeitos especiais</small>
+          </button>
+        </div>
+
+        <div class="home-grid">
+          <div>
+            <label>Seu nome</label>
+            <input id="name" class="input" maxlength="18" placeholder="Ex.: Mateus">
+          </div>
+          <div id="onlineJoinBox">
+            <label>Código da sala</label>
+            <input id="joinCode" class="input" maxlength="8" placeholder="ABC123" autocapitalize="characters">
+          </div>
+          <div id="soloCpuBox" class="hide">
+            <label>Quantidade de CPUs</label>
+            <select id="cpuCount" class="input">
+              <option value="1">1 CPU</option>
+              <option value="2" selected>2 CPUs</option>
+              <option value="3">3 CPUs</option>
+            </select>
+          </div>
+          <div id="soloDiffBox" class="hide">
+            <label>Dificuldade das CPUs</label>
+            <select id="cpuDifficulty" class="input">
+              <option value="easy">Fácil</option>
+              <option value="normal" selected>Normal</option>
+              <option value="hard">Difícil</option>
+            </select>
+          </div>
+          <div>
+            <label>Tempo por jogada</label>
+            <select id="turnTime" class="input">
+              <option value="0">Sem limite</option>
+              <option value="60">60 segundos</option>
+              <option value="90" selected>90 segundos</option>
+              <option value="120">120 segundos</option>
+            </select>
+          </div>
+          <div>
+            <label>Dicas</label>
+            <select id="hintsSetting" class="input">
+              <option value="on" selected>Ligadas</option>
+              <option value="off">Desligadas</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="onlineActions" class="home-actions">
+          <button id="createBtn" class="btn primary">Criar sala online</button>
+          <button id="joinBtn" class="btn blue">Entrar na sala</button>
+        </div>
+        <div id="soloActions" class="home-actions hide">
+          <button id="startSoloBtn" class="btn primary">Iniciar Single Player</button>
+        </div>
+        <div id="trainingActions" class="home-actions hide">
+          <button id="startTrainingBtn" class="btn primary">Abrir modo treino</button>
+        </div>
+
+        <div id="homeNotice" class="notice hide"></div>
+      </section>
+
+      <section id="lobby" class="panel hide">
+        <div class="lobby-header">
+          <div>
+            <div class="mini-label">Sala</div>
+            <div id="roomCode" class="room-code">------</div>
+          </div>
+          <div class="lobby-side">
+            <span id="lobbyKind" class="pill">ONLINE</span>
+            <span id="lobbyMode" class="pill gold">Clássico</span>
+          </div>
+        </div>
+
+        <div class="home-actions">
+          <button id="shareBtn" class="btn primary">📨 Compartilhar convite</button>
+          <button id="copyBtn" class="btn">Copiar código</button>
+          <button id="leaveBtn" class="btn red">Sair</button>
+        </div>
+
+        <div class="section-title">Jogadores</div>
+        <div id="playerCountLabel" class="minor-text">0/8</div>
+        <div id="lobbyPlayers" class="player-list"></div>
+        <div id="lobbyNotice" class="notice hide"></div>
+        <div class="home-actions">
+          <button id="startBtn" class="btn green hide">▶ Iniciar partida</button>
+        </div>
+      </section>
+
+      <section id="game" class="hide">
+        <div class="game-topbar panel compact">
+          <div>
+            <div id="turnText" class="turn-text">Aguardando...</div>
+            <div id="gameMeta" class="minor-text"></div>
+          </div>
+          <div class="topbar-right">
+            <span class="pill">Monte: <b id="deckCount">0</b></span>
+            <span id="timerTag" class="pill timer">⏱ <b id="timerText">--</b></span>
+            <span id="directionTag" class="pill gold">↻ Horário</span>
+          </div>
+        </div>
+
+        <div class="game-layout">
+          <aside class="side-column">
+            <div class="panel compact">
+              <div class="section-title">Mesa / Jogadores</div>
+              <div id="gamePlayers" class="player-list slim"></div>
+            </div>
+            <div class="panel compact">
+              <div class="section-title">Ações rápidas</div>
+              <div class="stack-buttons">
+                <button id="sortValueBtn" class="btn mini">Ordenar por valor</button>
+                <button id="sortColorBtn" class="btn mini">Ordenar por cor</button>
+                <button id="hintBtn" class="btn mini">💡 Dica</button>
+                <button id="toggleHintsBtn" class="btn mini">Ocultar dicas</button>
+                <button id="resetTurnBtn" class="btn mini">↶ Restaurar início do turno</button>
+                <button id="newTrainingBtn" class="btn mini hide">Nova mão</button>
+                <button id="clearTrainingBtn" class="btn mini hide">Limpar mesa</button>
+              </div>
+            </div>
+            <div class="panel compact" id="megaPanel">
+              <div class="section-title">MegaRumiX</div>
+              <div id="megaStatus" class="minor-text">Complete 3 combinações para desbloquear carta ou roleta.</div>
+              <div class="home-actions small-gap">
+                <button id="megaCardBtn" class="btn gold mini" disabled>Tirar carta</button>
+                <button id="megaSpinBtn" class="btn blue mini" disabled>Girar roleta</button>
+              </div>
+            </div>
+          </aside>
+
+          <section class="main-column">
+            <div class="panel compact">
+              <div id="gameNotice" class="notice hide"></div>
+              <div class="board-head">
+                <div>
+                  <div class="section-title">Mesa</div>
+                  <div class="minor-text">Depois da abertura, toque em “Editar grupo” para reorganizar peças já jogadas.</div>
+                </div>
+                <span id="editPoolTag" class="pill hide">Mesa em edição: <b id="editPoolCount">0</b></span>
+              </div>
+              <div id="table" class="table-area"></div>
+            </div>
+            <div class="panel compact">
+              <div class="rack-header">
+                <div>
+                  <div class="section-title">Suas peças</div>
+                  <div class="minor-text">Toque nas peças na ordem que deseja baixar.</div>
+                </div>
+                <div class="pill">Selecionadas: <b id="selectedCount">0</b></div>
+              </div>
+              <div id="rack" class="rack wood-rack"></div>
+              <div id="editPoolWrap" class="edit-pool-wrap hide">
+                <div class="section-title">Peças retiradas da mesa</div>
+                <div class="minor-text">Estas peças precisam voltar para combinações válidas antes de finalizar a jogada.</div>
+                <div id="editPool" class="rack edit-rack"></div>
+              </div>
+              <div class="action-row">
+                <button id="playBtn" class="btn green">Baixar seleção</button>
+                <button id="undoBtn" class="btn">↶ Desfazer</button>
+                <button id="drawBtn" class="btn">Comprar</button>
+                <button id="endBtn" class="btn primary">Finalizar jogada</button>
+              </div>
+            </div>
+            <div class="panel compact">
+              <div class="section-title">Histórico</div>
+              <div id="log" class="log-box"></div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
