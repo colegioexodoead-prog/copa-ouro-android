@@ -1,0 +1,42 @@
+name: Gerar Rumi Mix Arena v0.5.1 INSTALACAO CORRIGIDA
+
+on:
+  push:
+    branches: [ rumix-online-v051-install-fix ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Android 35 e ferramentas
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      - name: Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Compilar release e validar instalação
+        run: bash rumix-v051/build-rumix-v051-install-fix.sh
+      - name: Publicar APK e ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: RumiMixArena-v0.5.1-INSTALACAO-CORRIGIDA
+          path: |
+            dist/RumiMixArena-v0.5.1-INSTALACAO-CORRIGIDA.apk
+            dist/RumiMixArena-v0.5.1-INSTALACAO-CORRIGIDA.zip
+            dist/SHA256.txt
+            dist/ASSINATURA.txt
+            dist/APK-INFO.txt
+            dist/PERMISSOES.txt
+            dist/LEIA-ME.txt
