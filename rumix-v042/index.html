@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="color-scheme" content="light">
+  <title>Rumi Mix Arena Offline</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .offline-banner{background:#e9f8ef;border:1px solid #b9e5c9;color:#176b3a;padding:10px 14px;border-radius:14px;font-weight:800;margin-bottom:14px}
+    .tile.selected{transform:translateY(-10px);box-shadow:0 10px 18px rgba(0,0,0,.25);outline:3px solid #ffcd29}
+    .table-group{display:inline-flex;gap:4px;align-items:center;background:rgba(255,255,255,.12);padding:8px;border-radius:12px;margin:5px;vertical-align:top}
+    .edit-group-btn{font-size:11px;padding:6px 8px;margin-left:4px}
+    .game-layout.offline-layout{grid-template-columns:minmax(190px,260px) 1fr}
+    @media(max-width:850px){.game-layout.offline-layout{grid-template-columns:1fr}.side-column{order:2}.main-column{order:1}}
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="hero">
+    <div class="hero-top">
+      <div class="brand-mark">🎲</div>
+      <div>
+        <div class="eyebrow">Rumi Mix Arena</div>
+        <h1>Offline SAFE</h1>
+        <p>Versão local para testar instalação com segurança: sem multiplayer, sem bibliotecas externas e sem permissão de internet.</p>
+      </div>
+    </div>
+    <div class="hero-badges">
+      <span class="badge">Sem Internet</span><span class="badge">Single Player</span><span class="badge">Treino</span><span class="badge">Peças clássicas</span>
+    </div>
+  </header>
+
+  <main>
+    <section id="home" class="panel">
+      <div class="offline-banner">🔒 Esta edição funciona totalmente offline.</div>
+      <h2>Escolha a partida</h2>
+      <div class="choice-grid kinds-grid">
+        <button id="soloKind" class="kind-card active"><span class="kind-icon">🤖</span><b>Single Player</b><small>Jogue contra CPUs</small></button>
+        <button id="trainingKind" class="kind-card"><span class="kind-icon">🎯</span><b>Treino</b><small>Pratique sem adversários</small></button>
+      </div>
+      <div class="section-title">Modo</div>
+      <div class="choice-grid">
+        <button class="mode-card active" data-mode="classic"><span class="mode-chip">🔢</span><b>Clássico</b><small>Grupos e sequências</small></button>
+        <button class="mode-card mega" data-mode="mega"><span class="mode-chip">⚡</span><b>MegaRumiX</b><small>Clássico com recompensas especiais</small></button>
+      </div>
+      <div class="home-grid">
+        <div><label>Seu nome</label><input id="name" class="input" maxlength="18" placeholder="Jogador"></div>
+        <div id="cpuBox"><label>Quantidade de CPUs</label><select id="cpuCount" class="input"><option value="1">1 CPU</option><option value="2" selected>2 CPUs</option><option value="3">3 CPUs</option></select></div>
+        <div><label>Tempo por jogada</label><select id="turnTime" class="input"><option value="0">Sem limite</option><option value="60">60 segundos</option><option value="90" selected>90 segundos</option><option value="120">120 segundos</option></select></div>
+        <div><label>Dicas</label><select id="hintsSetting" class="input"><option value="on" selected>Ligadas</option><option value="off">Desligadas</option></select></div>
+      </div>
+      <div class="home-actions"><button id="startBtn" class="btn primary">▶ Iniciar partida</button></div>
+      <div id="homeNotice" class="notice hide"></div>
+    </section>
+
+    <section id="game" class="hide">
+      <div class="game-topbar panel compact">
+        <div><div id="turnText" class="turn-text">Aguardando...</div><div id="gameMeta" class="minor-text"></div></div>
+        <div class="topbar-right"><span class="pill">Monte: <b id="deckCount">0</b></span><span class="pill timer">⏱ <b id="timerText">--</b></span><span id="directionTag" class="pill gold">↻ Horário</span></div>
+      </div>
+      <div class="game-layout offline-layout">
+        <aside class="side-column">
+          <div class="panel compact"><div class="section-title">Jogadores</div><div id="gamePlayers" class="player-list slim"></div></div>
+          <div class="panel compact"><div class="section-title">Ações rápidas</div><div class="stack-buttons">
+            <button id="sortValueBtn" class="btn mini">Ordenar por valor</button>
+            <button id="sortColorBtn" class="btn mini">Ordenar por cor</button>
+            <button id="hintBtn" class="btn mini">💡 Dica</button>
+            <button id="toggleHintsBtn" class="btn mini">Ocultar dicas</button>
+            <button id="resetTurnBtn" class="btn mini">↶ Restaurar início do turno</button>
+            <button id="newTrainingBtn" class="btn mini hide">Nova mão</button>
+            <button id="homeBtn" class="btn mini red">Sair da partida</button>
+          </div></div>
+          <div id="megaPanel" class="panel compact hide"><div class="section-title">MegaRumiX</div><div id="megaStatus" class="minor-text"></div><div class="home-actions small-gap"><button id="megaCardBtn" class="btn gold mini" disabled>Usar recompensa</button></div></div>
+        </aside>
+        <section class="main-column">
+          <div class="panel compact"><div id="gameNotice" class="notice hide"></div><div class="board-head"><div><div class="section-title">Mesa</div><div class="minor-text">Após abrir 30 pontos, você pode editar grupos já jogados.</div></div><span id="editPoolTag" class="pill hide">Em edição: <b id="editPoolCount">0</b></span></div><div id="table" class="table-area"></div></div>
+          <div class="panel compact"><div class="rack-header"><div><div class="section-title">Suas peças</div><div class="minor-text">Toque nas peças para selecionar.</div></div><div class="pill">Selecionadas: <b id="selectedCount">0</b></div></div><div id="rack" class="rack wood-rack"></div><div id="editPoolWrap" class="edit-pool-wrap hide"><div class="section-title">Peças retiradas da mesa</div><div id="editPool" class="rack edit-rack"></div></div><div class="action-row"><button id="playBtn" class="btn green">Baixar seleção</button><button id="drawBtn" class="btn">Comprar</button><button id="endBtn" class="btn primary">Finalizar jogada</button></div></div>
+          <div class="panel compact"><div class="section-title">Histórico</div><div id="log" class="log-box"></div></div>
+        </section>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
