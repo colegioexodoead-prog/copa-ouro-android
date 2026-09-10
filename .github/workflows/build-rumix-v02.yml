@@ -1,0 +1,45 @@
+name: Gerar APK Rumi Mix Arena v0.2
+
+on:
+  push:
+    branches: [ rumix-online-v02 ]
+    paths:
+      - 'rumixv02/**'
+      - '.github/workflows/build-rumix-v02.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Android 35 e ferramentas de assinatura
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      - name: Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Compilar e validar APK
+        run: bash rumixv02/build-rumix-v02.sh
+      - name: Publicar APK validado
+        uses: actions/upload-artifact@v4
+        with:
+          name: Rumi-Mix-Arena-v0.2.0-INSTALAVEL
+          path: |
+            dist-rumix-v02/Rumi-Mix-Arena-v0.2.0-INSTALAVEL.apk
+            dist-rumix-v02/SHA256.txt
+            dist-rumix-v02/APK-INFO.txt
+          retention-days: 30
