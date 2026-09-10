@@ -134,7 +134,7 @@ android {
   defaultConfig {
     applicationId 'com.rumixarena.game.v053'
     minSdk 23
-    targetSdk 28
+    targetSdk 33
     versionCode 53
     versionName '0.5.3'
   }
@@ -194,7 +194,7 @@ unzip -t "$APK"
 "$BTDIR/aapt" dump permissions "$APK" | tee "$DIST/PERMISSOES.txt"
 grep -q "package: name='com.rumixarena.game.v053'" "$DIST/APK-INFO.txt"
 grep -q "sdkVersion:'23'" "$DIST/APK-INFO.txt"
-grep -q "targetSdkVersion:'28'" "$DIST/APK-INFO.txt"
+grep -q "targetSdkVersion:'33'" "$DIST/APK-INFO.txt"
 grep -q 'Verified using v1 scheme (JAR signing): true' "$DIST/ASSINATURA.txt"
 grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true' "$DIST/ASSINATURA.txt"
 sha256sum "$APK" | tee "$DIST/SHA256.txt"
@@ -206,7 +206,7 @@ Rumi Mix Arena v0.5.3 INSTALL TESTED
 - Pacote totalmente novo.
 - Manifesto mínimo, sem ícone customizado e sem deep link.
 - Android 6.0+.
-- targetSdk 28 para ampla compatibilidade com instaladores Android.
+- targetSdk 33.
 - APK release universal.
 - Assinatura v1 + v2.
 - Testado por adb install em emulador Android pelo workflow.
