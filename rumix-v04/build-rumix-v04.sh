@@ -24,7 +24,7 @@ mkdir -p app/src/main/java/com/rumix/arena app/src/main/res/values app/src/main/
 cp rumix-v04/MainActivity.java app/src/main/java/com/rumix/arena/MainActivity.java
 cp rumix-v04/index.html "$WWW/index.html"
 cp rumix-v04/style.css "$WWW/style.css"
-cp rumix-v04/app.js "$WWW/app.js"
+cat rumix-v04/app-chunk00.js rumix-v04/app-chunk01.js rumix-v04/app-chunk02.js rumix-v04/app-chunk03.js rumix-v04/app-chunk04.js rumix-v04/app-chunk05.js rumix-v04/app-chunk06.js rumix-v04/app-chunk07.js rumix-v04/app-chunk08.js rumix-v04/app-chunk09.js > "$WWW/app.js"
 
 node --check "$WWW/app.js"
 grep -q 'Rumi Mix Arena' "$WWW/index.html"
