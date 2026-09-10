@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const B=window.AndroidBridge;let cache='',ready=false,busy=false,checking=false,reason='startup',conflictShown=false;
+const B=window.AndroidBridge;let cache='',pendingRaw='',ready=false,busy=false,checking=false,reason='startup',conflictShown=false;
 function id(){return window.CopaProfiles?CopaProfiles.active():''}
 function ckey(){return 'copaProfileStateV13_'+id()}
 function baseKey(){return 'copaCloudBaseV137:'+id()}
@@ -12,7 +12,7 @@ function snapshot(){const p=id();if(!p)return '';return JSON.stringify({version:
 function base(){return Number(localStorage.getItem(baseKey())||0)}
 function setBase(v){localStorage.setItem(baseKey(),String(Number(v)||0))}
 function setPaused(v){if(v)localStorage.setItem(pauseKey(),'1');else localStorage.removeItem(pauseKey())}
-function doPut(raw){if(!B||!id()||!B.cloudHasSession()||busy)return;busy=true;cache=raw;B.cloudPut(ckey(),raw)}
+function doPut(raw){if(!B||!id()||!B.cloudHasSession()||busy)return;busy=true;pendingRaw=raw;B.cloudPut(ckey(),raw)}
 function requestGet(why){if(!B||!id()||checking)return;reason=why||'startup';checking=true;B.cloudGet()}
 function put(){
   if(!B||!id()||!B.cloudHasSession())return;
@@ -27,7 +27,7 @@ function get(){
 }
 function applyRemote(remote,raw){
   const ts=Number(remote.updatedAt||Date.now());
-  CopaProfiles.apply(id(),remote.data||{},ts);setBase(ts);cache=raw;setPaused(false);localStorage.removeItem(conflictKey());status('Dados online carregados');setTimeout(()=>location.reload(),180)
+  CopaProfiles.apply(id(),remote.data||{},ts);setBase(ts);cache='';pendingRaw='';setPaused(false);localStorage.removeItem(conflictKey());status('Dados online carregados');setTimeout(()=>location.reload(),180)
 }
 function conflictModal(remote,remoteRaw,local,localRaw){
   const payload={savedAt:new Date().toISOString(),profile:id(),remote,local};localStorage.setItem(conflictKey(),JSON.stringify(payload));setPaused(true);ready=true;
@@ -53,23 +53,27 @@ window.CopaCloudGetResult=function(ok,data){
     const all=JSON.parse(decode(data));const remoteRaw=all.states?all.states[ckey()]:null;const localRaw=snapshot();const local=JSON.parse(localRaw);
     if(!remoteRaw){setBase(0);ready=true;doPut(localRaw);status('Salvamento online automático ativo');return}
     const remote=JSON.parse(remoteRaw),r=Number(remote.updatedAt||0),l=Number(local.updatedAt||0),b=base();
-    if(remoteRaw===localRaw){cache=remoteRaw;setBase(Math.max(r,l));setPaused(false);ready=true;status('Salvamento online automático ativo');return}
+    if(remoteRaw===localRaw){cache=localRaw;setBase(Math.max(r,l));setPaused(false);ready=true;status('Salvamento online automático ativo');return}
     if(!b){
       if(r>l){applyRemote(remote,remoteRaw);return}
       if(l>r){conflictModal(remote,remoteRaw,local,localRaw);return}
-      cache=remoteRaw;setBase(r);ready=true;status('Salvamento online automático ativo');return
+      cache=localRaw;setBase(r);ready=true;status('Salvamento online automático ativo');return
     }
     const remoteChanged=r>b,localChanged=l>b;
     if(remoteChanged&&localChanged){conflictModal(remote,remoteRaw,local,localRaw);return}
     if(remoteChanged){applyRemote(remote,remoteRaw);return}
     if(localChanged){doPut(localRaw);return}
-    cache=remoteRaw;ready=true;status('Salvamento online automático ativo');
+    cache=localRaw;ready=true;status('Salvamento online automático ativo');
   }catch(e){ready=true;status('Erro ao ler dados online',false)}
 };
 window.CopaCloudPutResult=function(k,ok,why){
-  busy=false;if(k!==ckey())return;
-  if(ok){const s=snapshot();cache=s;try{setBase(Number(JSON.parse(s).updatedAt||Date.now()))}catch(e){}ready=true;status('Salvo online automaticamente')}
-  else{ready=true;status(why==='AUTH'?'Sessão da nuvem expirada':'Sem internet • salvo no aparelho',false)}
+  const sent=pendingRaw;pendingRaw='';busy=false;if(k!==ckey())return;
+  if(ok){
+    cache=sent||cache;
+    try{setBase(Number(JSON.parse(sent).updatedAt||Date.now()))}catch(e){}
+    ready=true;status('Salvo online automaticamente');
+    setTimeout(()=>{if(snapshot()!==cache)put()},80);
+  }else{ready=true;status(why==='AUTH'?'Sessão da nuvem expirada':'Sem internet • salvo no aparelho',false)}
 };
 window.CopaCloudManualConnect=function(){if(!B)return;const p=prompt('Digite a senha da nuvem Copa Ouro:');if(p)B.cloudLogin(p)};
 setInterval(()=>{if(ready&&navigator.onLine)put()},2500);
