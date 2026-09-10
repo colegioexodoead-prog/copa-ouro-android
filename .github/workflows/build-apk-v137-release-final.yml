@@ -1,0 +1,47 @@
+name: Gerar APK Copa Ouro v1.3.7 RELEASE FINAL
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar Android 35
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Montar testar e compilar v1.3.7
+        run: bash v13/build-v137-final.sh
+
+      - name: Publicar APK v1.3.7 FINAL
+        uses: actions/upload-artifact@v4
+        with:
+          name: Copa-Ouro-v1.3.7-FINAL-ESTAVEL
+          path: |
+            dist/Copa-Ouro-v1.3.7-FINAL-ESTAVEL.apk
+            dist/SHA256.txt
+          retention-days: 30
