@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <title>Rumi Mix Arena</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="brand">
+    <div class="logo">🎲</div>
+    <div><h1>Rumi Mix Arena</h1><p>Sequências, palavras, estratégia e caos no MegaRumiX</p></div>
+    <span class="version">v0.2</span>
+  </header>
+
+  <section id="home" class="panel">
+    <h2>1. Como você quer jogar?</h2>
+    <div class="cards three" id="playTypes">
+      <button class="choice active" data-play="online"><b>🌐 Multiplayer Online</b><span>Crie uma sala e convide até 8 jogadores.</span></button>
+      <button class="choice" data-play="cpu"><b>🤖 Single Player</b><span>Jogue contra 1, 2 ou 3 adversários controlados pela CPU.</span></button>
+      <button class="choice" data-play="training"><b>🎯 Modo Treino</b><span>Pratique combinações, receba dicas e teste jogadas sem pressão.</span></button>
+    </div>
+
+    <h2>2. Escolha as regras</h2>
+    <div class="cards two" id="modes">
+      <button class="choice mode active" data-mode="classic"><b>🔢 Clássico</b><span>Grupos do mesmo número e sequências da mesma cor.</span></button>
+      <button class="choice mode" data-mode="words"><b>🔤 Letras & Palavras</b><span>Monte palavras com 3 ou mais letras.</span></button>
+      <button class="choice mode" data-mode="mixed"><b>🔀 Misto</b><span>Números, palavras e combinações alternadas de letras e números.</span></button>
+      <button class="choice mode mega" data-mode="mega"><b>⚡ MegaRumiX</b><span>A cada 3 combinações oficiais, escolha Carta ou Roleta e ative um efeito.</span></button>
+    </div>
+
+    <div class="form-grid top-space">
+      <div><label>Seu nome</label><input id="name" class="input" maxlength="18" placeholder="Ex.: Mateus"></div>
+      <div id="roomField"><label>Código da sala</label><input id="joinCode" class="input" maxlength="8" placeholder="ABC123" autocapitalize="characters"></div>
+      <div id="cpuCountField" class="hide"><label>Quantidade de CPUs</label><select id="cpuCount" class="input"><option value="1">1 CPU</option><option value="2">2 CPUs</option><option value="3">3 CPUs</option></select></div>
+      <div id="difficultyField" class="hide"><label>Dificuldade</label><select id="difficulty" class="input"><option value="easy">Fácil</option><option value="normal" selected>Normal</option><option value="hard">Difícil</option></select></div>
+    </div>
+
+    <div id="onlineButtons" class="actions top-space">
+      <button id="createBtn" class="btn primary">Criar sala online</button>
+      <button id="joinBtn" class="btn green">Entrar na sala</button>
+    </div>
+    <div id="soloButtons" class="actions top-space hide"><button id="soloStartBtn" class="btn green">▶ Começar contra CPU</button></div>
+    <div id="trainingButtons" class="actions top-space hide"><button id="trainingStartBtn" class="btn primary">🎯 Começar treino</button></div>
+    <div id="homeNotice" class="notice hide"></div>
+    <div class="footer-note">O treino e o single player funcionam sem sala. O multiplayer precisa de internet.</div>
+  </section>
+
+  <section id="lobby" class="panel hide">
+    <div class="statusbar"><div><div class="muted">SALA</div><div id="roomCode" class="room-code">------</div></div><span id="lobbyMode" class="pill"></span></div>
+    <div class="actions"><button id="shareBtn" class="btn primary">📨 Compartilhar convite</button><button id="copyBtn" class="btn">Copiar código</button></div>
+    <h3>Jogadores <span id="playerCount">0/8</span></h3>
+    <div id="lobbyPlayers" class="players"></div>
+    <div id="lobbyNotice" class="notice hide"></div>
+    <div class="actions"><button id="startBtn" class="btn green hide">▶ Iniciar partida</button><button id="leaveBtn" class="btn red">Sair</button></div>
+  </section>
+
+  <section id="game" class="hide">
+    <div class="panel game-panel">
+      <div class="statusbar game-head">
+        <div><b id="turnText">Aguardando...</b><div class="muted" id="gameMeta"></div></div>
+        <div class="head-pills"><span class="pill">Monte: <b id="deckCount">0</b></span><span id="comboPill" class="pill hide">⚡ <b id="comboCount">0</b>/3</span></div>
+      </div>
+      <div id="gamePlayers" class="players"></div>
+      <div id="gameNotice" class="notice hide"></div>
+
+      <div id="powerPanel" class="power-panel hide">
+        <div><b>⚡ MEGARUMIX ATIVADO!</b><span>Você completou 3 combinações. Escolha sua surpresa:</span></div>
+        <div class="actions"><button id="cardBtn" class="btn card-btn">🃏 Tirar Carta</button><button id="wheelBtn" class="btn wheel-btn">🎡 Girar Roleta</button></div>
+      </div>
+      <div id="powerResult" class="power-result hide"></div>
+      <div id="spyPanel" class="spy-panel hide"></div>
+
+      <div class="table-title"><b>MESA</b><span class="muted">Combinações oficiais</span></div>
+      <div id="table" class="table"></div>
+
+      <div class="rack-wrap">
+        <div class="rack-title"><div><b>SUAS PEÇAS</b><div class="muted">Toque nas peças na ordem em que deseja jogar.</div></div><button id="sortBtn" class="mini-btn">Ordenar</button></div>
+        <div id="rack" class="rack"></div>
+      </div>
+
+      <div class="actions game-actions">
+        <button id="playBtn" class="btn green">Baixar seleção</button>
+        <button id="undoBtn" class="btn">↶ Desfazer</button>
+        <button id="endBtn" class="btn primary">Finalizar jogada</button>
+        <button id="drawBtn" class="btn">Comprar peça</button>
+      </div>
+
+      <div id="trainingTools" class="training-tools hide">
+        <button id="hintBtn" class="btn">💡 Dica</button>
+        <button id="newHandBtn" class="btn">🔄 Nova mão</button>
+        <button id="clearTableBtn" class="btn">🧹 Limpar mesa</button>
+      </div>
+      <div class="actions top-space"><button id="quitGameBtn" class="btn red">Sair da partida</button></div>
+      <div class="top-space"><b>Histórico</b><div id="log" class="log"></div></div>
+    </div>
+  </section>
+</div>
+<script src="peerjs.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
