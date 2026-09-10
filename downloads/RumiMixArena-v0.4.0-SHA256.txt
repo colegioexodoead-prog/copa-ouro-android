@@ -1,1 +1,1 @@
-551527fb3bede8f0d3ee0625b0647d53c398074f880092f45368057660210f44  /home/runner/work/copa-ouro-android/copa-ouro-android/dist/Rumi-Mix-Arena-v0.4.0.apk
+2ac75b3a1229f955152277b0cc06e52aafb73f4e94382c0b207863f8fa3909cd  /home/runner/work/copa-ouro-android/copa-ouro-android/dist/Rumi-Mix-Arena-v0.4.0.apk
