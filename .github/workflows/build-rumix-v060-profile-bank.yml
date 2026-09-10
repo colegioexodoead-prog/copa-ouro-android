@@ -1,0 +1,74 @@
+name: Gerar Rumi Mix Arena v0.6.0 PERFIL MOEDAS
+
+on:
+  push:
+    branches:
+      - rumix-online-v060-profile-bank
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Android 33 e ferramentas
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
+      - name: Gradle 7.6.4
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '7.6.4'
+
+      - name: Compilar e validar APK
+        run: bash rumix-v060/build-rumix-v060.sh
+
+      - name: Testar instalação real no Android 10
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            adb install -r dist/RumiMixArena-v0.6.0-PERFIL-MOEDAS.apk
+            adb shell pm path com.rumixarena.game.v060
+            adb shell monkey -p com.rumixarena.game.v060 -c android.intent.category.LAUNCHER 1
+            sleep 3
+            adb shell pidof com.rumixarena.game.v060
+
+      - name: Registrar teste
+        run: |
+          echo "ADB INSTALL: OK" > dist/TESTE-INSTALACAO.txt
+          echo "Android emulado: API 29 (Android 10)" >> dist/TESTE-INSTALACAO.txt
+          echo "Pacote: com.rumixarena.game.v060" >> dist/TESTE-INSTALACAO.txt
+          echo "Perfil/moedas/orientacao: incluidos" >> dist/TESTE-INSTALACAO.txt
+          cd dist
+          zip -u RumiMixArena-v0.6.0-PERFIL-MOEDAS.zip TESTE-INSTALACAO.txt
+          unzip -t RumiMixArena-v0.6.0-PERFIL-MOEDAS.zip
+
+      - name: Publicar APK e ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: RumiMixArena-v0.6.0-PERFIL-MOEDAS
+          path: |
+            dist/RumiMixArena-v0.6.0-PERFIL-MOEDAS.apk
+            dist/RumiMixArena-v0.6.0-PERFIL-MOEDAS.zip
+            dist/SHA256.txt
+            dist/ASSINATURA.txt
+            dist/APK-INFO.txt
+            dist/PERMISSOES.txt
+            dist/TESTE-INSTALACAO.txt
+            dist/LEIA-ME.txt
