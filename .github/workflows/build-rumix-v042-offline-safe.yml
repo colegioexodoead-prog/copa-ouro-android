@@ -1,0 +1,49 @@
+name: Gerar Rumi Mix Arena v0.4.2 OFFLINE SAFE
+on:
+  push:
+    branches: [ "rumix-offline-v042-safe" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Android 35 e ferramentas
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+
+      - name: Compilar e validar OFFLINE SAFE
+        run: bash rumix-v042/build-rumix-v042-offline.sh
+
+      - name: Publicar ZIP e APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: RumiMixArena-v0.4.2-OFFLINE-SAFE
+          path: |
+            dist-v042/RumiMixArena-v0.4.2-OFFLINE-SAFE.zip
+            dist-v042/RumiMixArena-v0.4.2-OFFLINE-SAFE.apk
+            dist-v042/SHA256.txt
+            dist-v042/ASSINATURA.txt
+            dist-v042/APK-INFO.txt
+            dist-v042/PERMISSOES.txt
+            dist-v042/LEIA-ME.txt
