@@ -1,0 +1,33 @@
+name: Montar Pack de Escudos
+
+on:
+  push:
+    branches:
+      - chatgpt-escudos-pack
+  workflow_dispatch:
+
+jobs:
+  montar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar base publica de escudos
+        run: |
+          git clone --depth 1 https://github.com/JoseArroyave/football-logos.git fonte
+
+      - name: Montar pasta final
+        run: |
+          mkdir -p ESCUDOS_COPA_OURO
+          cp -R fonte/logos/. ESCUDOS_COPA_OURO/
+          cp fonte/LICENSE ESCUDOS_COPA_OURO/LICENSE_FONTE.txt || true
+          cp fonte/README.md ESCUDOS_COPA_OURO/README_FONTE.md || true
+          find ESCUDOS_COPA_OURO -type f | sort > ESCUDOS_COPA_OURO/INDICE_ESCUDOS.txt
+          TOTAL=$(find ESCUDOS_COPA_OURO -type f -name '*.svg' | wc -l)
+          echo "Total de escudos SVG: $TOTAL" > ESCUDOS_COPA_OURO/QUANTIDADE.txt
+          zip -r ESCUDOS_COPA_OURO.zip ESCUDOS_COPA_OURO
+
+      - name: Publicar ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: ESCUDOS_COPA_OURO
+          path: ESCUDOS_COPA_OURO.zip
+          retention-days: 1
