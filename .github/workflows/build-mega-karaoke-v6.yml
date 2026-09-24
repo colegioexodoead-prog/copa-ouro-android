@@ -1,4 +1,4 @@
-name: Gerar APK Mega Karaoke V6 Base
+name: Gerar APK Mega Karaoke V6 Install Safe
 
 on:
   push:
@@ -59,7 +59,9 @@ jobs:
           assert old in s
           open(p,'w',encoding='utf-8').write(s.replace(old,new))
           p='karaoke-v6/src/android/app/build.gradle.kts'
-          s=open(p).read().replace('versionCode = 6','versionCode = 7').replace('versionName = "5.1-licensed-library"','versionName = "6.0-embedded-karaoke"')
+          s=open(p).read()
+          s=s.replace('applicationId = "com.megakaraoke.app"','applicationId = "com.megakaraoke.v6nacionais"')
+          s=s.replace('versionCode = 6','versionCode = 8').replace('versionName = "5.1-licensed-library"','versionName = "6.1-install-safe"')
           open(p,'w').write(s)
           PY
 
@@ -72,14 +74,14 @@ jobs:
           APK=karaoke-v6/src/android/app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
           zipinfo -t "$APK"
-          cp "$APK" karaoke-v6/Mega-Karaoke-V6-BASE.apk
-          sha256sum karaoke-v6/Mega-Karaoke-V6-BASE.apk > karaoke-v6/SHA256-V6-BASE.txt
+          cp "$APK" karaoke-v6/Mega-Karaoke-V6-INSTALL-SAFE-BASE.apk
+          sha256sum karaoke-v6/Mega-Karaoke-V6-INSTALL-SAFE-BASE.apk > karaoke-v6/SHA256-V6-INSTALL-SAFE-BASE.txt
 
       - name: Publicar APK base
         uses: actions/upload-artifact@v4
         with:
-          name: Mega-Karaoke-V6-BASE
+          name: Mega-Karaoke-V6-INSTALL-SAFE-BASE
           path: |
-            karaoke-v6/Mega-Karaoke-V6-BASE.apk
-            karaoke-v6/SHA256-V6-BASE.txt
+            karaoke-v6/Mega-Karaoke-V6-INSTALL-SAFE-BASE.apk
+            karaoke-v6/SHA256-V6-INSTALL-SAFE-BASE.txt
           retention-days: 30
