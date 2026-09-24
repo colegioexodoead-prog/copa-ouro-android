@@ -4,7 +4,6 @@ on:
   push:
     branches: [ mega-karaoke-apk-v4-build ]
     paths:
-      - 'karaoke-build/**'
       - '.github/workflows/build-mega-karaoke-v4.yml'
   workflow_dispatch:
 
@@ -28,7 +27,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Instalar Android 35
+      - name: Android 35
         run: |
           SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
           test -x "$SDKMANAGER"
@@ -42,17 +41,19 @@ jobs:
 
       - name: Restaurar projeto Mega Karaoke
         run: |
+          cat karaoke-chunks/part00 karaoke-chunks/part01 karaoke-chunks/part02 karaoke-chunks/part03 karaoke-chunks/part04 > /tmp/mega-karaoke-v4.b64
+          test "$(wc -c < /tmp/mega-karaoke-v4.b64)" = "32620"
+          echo "f58db9f8fc32e4679c467416d805f90befc6610b3de7229d9f9cf20fa8324b8f  /tmp/mega-karaoke-v4.b64" | sha256sum -c -
+          base64 -d /tmp/mega-karaoke-v4.b64 > /tmp/mega-karaoke-v4.zip
+          echo "b67e6f4bdbea32b291d838501c7404309e9b2814321075200aa68f78adf18958  /tmp/mega-karaoke-v4.zip" | sha256sum -c -
           rm -rf karaoke-build/src
           mkdir -p karaoke-build/src
-          base64 -d karaoke-build/mega_karaoke_android_v4_only.b64 > /tmp/mega-karaoke-v4.zip
           unzip -q /tmp/mega-karaoke-v4.zip -d karaoke-build/src
           test -f karaoke-build/src/android/settings.gradle.kts
-          find karaoke-build/src/android -maxdepth 3 -type f | sort | head -80
 
       - name: Compilar APK instalavel
         working-directory: karaoke-build/src/android
-        run: |
-          gradle --no-daemon :app:assembleDebug
+        run: gradle --no-daemon :app:assembleDebug
 
       - name: Validar e preparar APK
         run: |
