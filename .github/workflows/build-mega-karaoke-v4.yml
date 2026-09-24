@@ -11,6 +11,10 @@ on:
 permissions:
   contents: read
 
+env:
+  ANDROID_HOME: /usr/local/lib/android/sdk
+  ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,11 +28,10 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Instalar Android 35
         run: |
+          echo "SDK: $ANDROID_SDK_ROOT"
+          command -v sdkmanager
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
@@ -39,21 +42,26 @@ jobs:
 
       - name: Restaurar projeto Mega Karaoke
         run: |
+          rm -rf karaoke-build/src
           mkdir -p karaoke-build/src
           base64 -d karaoke-build/mega_karaoke_android_v4_only.b64 > /tmp/mega-karaoke-v4.zip
           unzip -q /tmp/mega-karaoke-v4.zip -d karaoke-build/src
           test -f karaoke-build/src/android/settings.gradle.kts
+          find karaoke-build/src/android -maxdepth 3 -type f | sort | head -80
 
       - name: Compilar APK instalavel
         working-directory: karaoke-build/src/android
         run: |
           gradle --no-daemon :app:assembleDebug
 
-      - name: Preparar APK
+      - name: Validar e preparar APK
         run: |
+          test -s karaoke-build/src/android/app/build/outputs/apk/debug/app-debug.apk
           cp karaoke-build/src/android/app/build/outputs/apk/debug/app-debug.apk karaoke-build/Mega-Karaoke-V4.apk
+          unzip -t karaoke-build/Mega-Karaoke-V4.apk >/dev/null
           sha256sum karaoke-build/Mega-Karaoke-V4.apk > karaoke-build/SHA256-Mega-Karaoke-V4.txt
           ls -lh karaoke-build/Mega-Karaoke-V4.apk
+          cat karaoke-build/SHA256-Mega-Karaoke-V4.txt
 
       - name: Publicar APK
         uses: actions/upload-artifact@v4
