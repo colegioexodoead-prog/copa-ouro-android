@@ -1,0 +1,54 @@
+name: Export Android Build Tools V6
+
+on:
+  push:
+    branches: [ mega-karaoke-apk-v6-build ]
+    paths:
+      - '.github/workflows/export-android-build-tools-v6.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ANDROID_HOME: /usr/local/lib/android/sdk
+  ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android Build Tools 35
+        run: |
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "build-tools;35.0.0"
+          test -x "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign"
+          test -x "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner"
+          "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" --version
+
+      - name: Package tools
+        run: |
+          mkdir -p android-tools
+          cp -a "$ANDROID_SDK_ROOT/build-tools/35.0.0" android-tools/build-tools-35.0.0
+          tar -czf android-build-tools-35.0.0.tar.gz -C android-tools build-tools-35.0.0
+          sha256sum android-build-tools-35.0.0.tar.gz > SHA256-android-build-tools.txt
+
+      - name: Upload tools
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-Build-Tools-35-V6
+          path: |
+            android-build-tools-35.0.0.tar.gz
+            SHA256-android-build-tools.txt
+          retention-days: 3
