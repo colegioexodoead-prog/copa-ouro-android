@@ -1,0 +1,65 @@
+name: Gerar APK Mega Karaoke V4
+
+on:
+  push:
+    branches: [ mega-karaoke-apk-v4-build ]
+    paths:
+      - 'karaoke-build/**'
+      - '.github/workflows/build-mega-karaoke-v4.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar Android 35
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Restaurar projeto Mega Karaoke
+        run: |
+          mkdir -p karaoke-build/src
+          base64 -d karaoke-build/mega_karaoke_android_v4_only.b64 > /tmp/mega-karaoke-v4.zip
+          unzip -q /tmp/mega-karaoke-v4.zip -d karaoke-build/src
+          test -f karaoke-build/src/android/settings.gradle.kts
+
+      - name: Compilar APK instalavel
+        working-directory: karaoke-build/src/android
+        run: |
+          gradle --no-daemon :app:assembleDebug
+
+      - name: Preparar APK
+        run: |
+          cp karaoke-build/src/android/app/build/outputs/apk/debug/app-debug.apk karaoke-build/Mega-Karaoke-V4.apk
+          sha256sum karaoke-build/Mega-Karaoke-V4.apk > karaoke-build/SHA256-Mega-Karaoke-V4.txt
+          ls -lh karaoke-build/Mega-Karaoke-V4.apk
+
+      - name: Publicar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mega-Karaoke-V4-APK
+          path: |
+            karaoke-build/Mega-Karaoke-V4.apk
+            karaoke-build/SHA256-Mega-Karaoke-V4.txt
+          retention-days: 30
