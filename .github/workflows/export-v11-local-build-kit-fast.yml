@@ -1,0 +1,93 @@
+name: Export V11 Local Build Kit Fast
+
+on:
+  push:
+    branches: [ mega-karaoke-apk-v11-install-safe ]
+    paths:
+      - '.github/workflows/export-v11-local-build-kit-fast.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ANDROID_HOME: /usr/local/lib/android/sdk
+  ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android 35
+        run: |
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      - name: Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Preparar projeto final-clean
+        run: |
+          rm -rf karaoke-v11/src /tmp/v11src
+          mkdir -p karaoke-v11/src /tmp/v11src
+          cat karaoke-v5/chunks/chunk_00 karaoke-v5/chunks/chunk_01 karaoke-v5/chunks/chunk_02 karaoke-v5/chunks/chunk_03 > /tmp/mega-karaoke-v5.b64
+          base64 -d /tmp/mega-karaoke-v5.b64 > /tmp/mega-karaoke-v5.zip
+          unzip -q /tmp/mega-karaoke-v5.zip -d karaoke-v11/src
+          cat karaoke-v11/chunks/chunk_00 karaoke-v11/chunks/chunk_01 karaoke-v11/chunks/chunk_02 karaoke-v11/chunks/chunk_03 > /tmp/v11java.tar.xz.b64
+          base64 -d /tmp/v11java.tar.xz.b64 > /tmp/v11java.tar.xz
+          tar -xJf /tmp/v11java.tar.xz -C /tmp/v11src
+          cp /tmp/v11src/java/*.java karaoke-v11/src/android/app/src/main/java/com/megakaraoke/app/
+          python3 - <<'PYFIX'
+          from pathlib import Path
+          p=Path('karaoke-v11/src/android/app/src/main/java/com/megakaraoke/app/KaraokePlayerActivity.java')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace(r'\p{L}', r'\\p{L}').replace(r'\p{N}', r'\\p{N}')
+          s=s.replace('ts.mediaTimeUs','ts.getAnchorMediaTimeUs()')
+          s=s.replace('ts.clockRate','ts.getMediaClockRate()')
+          s=s.replace('ts.nanoTime','ts.getAnchorSytemNanoTime()')
+          p.write_text(s,encoding='utf-8')
+          PYFIX
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('karaoke-v11/src/android/app/src/main/AndroidManifest.xml')
+          s=p.read_text(encoding='utf-8')
+          old='''        <activity android:name=".VideoActivity" android:screenOrientation="unspecified" android:exported="false" />\n        <activity android:name=".SearchActivity" android:screenOrientation="unspecified" android:exported="false" />\n        <activity android:name=".MainActivity" android:screenOrientation="unspecified" android:exported="true">\n            <intent-filter>\n                <action android:name="android.intent.action.MAIN" />\n                <category android:name="android.intent.category.LAUNCHER" />\n            </intent-filter>\n        </activity>'''
+          new='''        <activity android:name=".AvatarActivity" android:screenOrientation="unspecified" android:exported="false" />\n        <activity android:name=".RankingActivity" android:screenOrientation="unspecified" android:exported="false" />\n        <activity android:name=".PlayersActivity" android:screenOrientation="unspecified" android:exported="false" />\n        <activity android:name=".KaraokePlayerActivity" android:screenOrientation="unspecified" android:exported="false" />\n        <activity android:name=".VideoActivity" android:screenOrientation="unspecified" android:exported="false" />\n        <activity android:name=".SearchActivity" android:screenOrientation="unspecified" android:exported="false" />\n        <activity android:name=".MainActivity" android:screenOrientation="unspecified" android:exported="false" />\n        <activity android:name=".EmbeddedLibraryActivity" android:screenOrientation="unspecified" android:exported="true">\n            <intent-filter>\n                <action android:name="android.intent.action.MAIN" />\n                <category android:name="android.intent.category.LAUNCHER" />\n            </intent-filter>\n        </activity>'''
+          assert old in s
+          p.write_text(s.replace(old,new),encoding='utf-8')
+          p=Path('karaoke-v11/src/android/app/build.gradle.kts')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('applicationId = "com.megakaraoke.app"','applicationId = "com.megakaraoke.v11finalclean"')
+          s=s.replace('versionCode = 6','versionCode = 17')
+          s=s.replace('versionName = "5.1-licensed-library"','versionName = "11.3-final-clean"')
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Aquecer dependencias
+        working-directory: karaoke-v11/src/android
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Preparar diretórios do kit
+        run: |
+          rm -rf local-kit
+          mkdir -p local-kit/project local-kit/gradle-cache local-kit/android-sdk local-kit/gradle
+          cp -a karaoke-v11/src/android local-kit/project/
+          cp -a "$HOME/.gradle/caches/modules-2" local-kit/gradle-cache/
+          cp -a "$HOME/.gradle/caches/8.9" local-kit/gradle-cache/ || true
+          cp -a "$ANDROID_SDK_ROOT/build-tools/35.0.0" local-kit/android-sdk/
+          cp -a "$ANDROID_SDK_ROOT/platforms/android-35" local-kit/android-sdk/
+          GRADLE_BIN="$(command -v gradle)"
+          GRADLE_HOME="$(cd "$(dirname "$GRADLE_BIN")/.." && pwd)"
+          cp -a "$GRADLE_HOME" local-kit/gradle/
+          du -sh local-kit/*
+      - name: Publicar kit
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mega-Karaoke-V11-LOCAL-BUILD-KIT-FAST
+          path: local-kit
+          compression-level: 0
+          retention-days: 7
