@@ -1,0 +1,41 @@
+name: Export Android Sign Tools V10
+
+on:
+  push:
+    branches: [ mega-karaoke-apk-v10-score-audit ]
+    paths:
+      - '.github/workflows/export-android-sign-tools-v10.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ANDROID_HOME: /usr/local/lib/android/sdk
+  ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Preparar Build Tools 35
+        run: |
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "build-tools;35.0.0"
+          mkdir -p android-sign-tools/lib
+          cp "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" android-sign-tools/
+          cp "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" android-sign-tools/
+          cp "$ANDROID_SDK_ROOT/build-tools/35.0.0/lib/apksigner.jar" android-sign-tools/lib/
+          chmod +x android-sign-tools/zipalign android-sign-tools/apksigner
+      - name: Publicar ferramentas
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-Sign-Tools-35
+          path: android-sign-tools
+          retention-days: 7
