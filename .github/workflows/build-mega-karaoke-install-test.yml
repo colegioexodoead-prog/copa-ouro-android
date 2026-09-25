@@ -1,0 +1,122 @@
+name: Build Mega Karaoke Install Test
+
+on:
+  push:
+    branches: [ mega-karaoke-apk-v11-install-safe ]
+    paths:
+      - '.github/workflows/build-mega-karaoke-install-test.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  ANDROID_HOME: /usr/local/lib/android/sdk
+  ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android 35
+        run: |
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Criar projeto mínimo de teste
+        run: |
+          rm -rf /tmp/install-test
+          mkdir -p /tmp/install-test/app/src/main/java/com/megakaraoke/installcheck
+          cat > /tmp/install-test/settings.gradle.kts <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name = "MegaKaraokeInstallCheck"
+          include(":app")
+          EOF
+          cat > /tmp/install-test/build.gradle.kts <<'EOF'
+          plugins { id("com.android.application") version "8.7.3" apply false }
+          EOF
+          cat > /tmp/install-test/app/build.gradle.kts <<'EOF'
+          plugins { id("com.android.application") }
+          android {
+              namespace = "com.megakaraoke.installcheck"
+              compileSdk = 35
+              defaultConfig {
+                  applicationId = "com.megakaraoke.installcheck"
+                  minSdk = 24
+                  targetSdk = 35
+                  versionCode = 1
+                  versionName = "1.0"
+              }
+          }
+          EOF
+          cat > /tmp/install-test/app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <application android:theme="@style/AppTheme" android:label="Mega Karaoke - Teste de Instalação" android:allowBackup="false" android:supportsRtl="true">
+              <activity android:name=".MainActivity" android:screenOrientation="unspecified" android:exported="true">
+                <intent-filter>
+                  <action android:name="android.intent.action.MAIN" />
+                  <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          EOF
+          mkdir -p /tmp/install-test/app/src/main/res/values
+          cat > /tmp/install-test/app/src/main/res/values/styles.xml <<'EOF'
+          <resources>
+            <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+              <item name="android:fontFamily">sans</item>
+              <item name="android:windowLightStatusBar">false</item>
+              <item name="android:statusBarColor">#20104F</item>
+            </style>
+          </resources>
+          EOF
+          cat > /tmp/install-test/app/src/main/java/com/megakaraoke/installcheck/MainActivity.java <<'EOF'
+          package com.megakaraoke.installcheck;
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.os.Build;
+          import android.graphics.Color;
+          import android.view.Gravity;
+          import android.widget.LinearLayout;
+          import android.widget.TextView;
+          public class MainActivity extends Activity {
+            @Override public void onCreate(Bundle b) {
+              super.onCreate(b);
+              LinearLayout root = new LinearLayout(this);
+              root.setOrientation(LinearLayout.VERTICAL); root.setGravity(Gravity.CENTER); root.setPadding(48,48,48,48); root.setBackgroundColor(Color.rgb(32,16,79));
+              TextView t = new TextView(this); t.setTextColor(Color.WHITE); t.setTextSize(28); t.setGravity(Gravity.CENTER); t.setText("✓ INSTALAÇÃO FUNCIONOU\n\nMega Karaokê - teste limpo"); root.addView(t);
+              TextView d = new TextView(this); d.setTextColor(Color.LTGRAY); d.setTextSize(17); d.setGravity(Gravity.CENTER); d.setPadding(0,40,0,0);
+              d.setText("Fabricante: "+Build.MANUFACTURER+"\nModelo: "+Build.MODEL+"\nAndroid: "+Build.VERSION.RELEASE+" (API "+Build.VERSION.SDK_INT+")\n\nSe você está vendo esta tela, o instalador do celular aceita APK externo e a correção deve ser feita no pacote completo do Mega Karaokê."); root.addView(d);
+              setContentView(root);
+            }
+          }
+          EOF
+      - name: Compilar e validar
+        working-directory: /tmp/install-test
+        run: |
+          gradle --no-daemon :app:assembleDebug
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose "$APK"
+          "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" -c -P 16 4 "$APK"
+          mkdir -p "$GITHUB_WORKSPACE/downloads"
+          cp "$APK" "$GITHUB_WORKSPACE/downloads/Mega-Karaoke-TESTE-INSTALACAO.apk"
+          sha256sum "$GITHUB_WORKSPACE/downloads/Mega-Karaoke-TESTE-INSTALACAO.apk" > "$GITHUB_WORKSPACE/downloads/Mega-Karaoke-TESTE-INSTALACAO.sha256.txt"
+      - name: Publicar APK diretamente no repositório
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          git config user.name "Mega Karaoke Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add downloads/Mega-Karaoke-TESTE-INSTALACAO.apk downloads/Mega-Karaoke-TESTE-INSTALACAO.sha256.txt
+          git commit -m "Add clean Mega Karaoke installation test APK" || exit 0
+          git push origin HEAD:mega-karaoke-apk-v11-install-safe
