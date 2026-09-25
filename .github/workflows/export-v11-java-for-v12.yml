@@ -1,0 +1,41 @@
+name: Export V11 Java for V12
+
+on:
+  push:
+    branches: [ mega-karaoke-apk-v12-easy-ui ]
+    paths:
+      - '.github/workflows/export-v11-java-for-v12.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct V11 Java
+        run: |
+          rm -rf /tmp/v11src export-v11-java
+          mkdir -p /tmp/v11src export-v11-java
+          cat karaoke-v11/chunks/chunk_00 karaoke-v11/chunks/chunk_01 karaoke-v11/chunks/chunk_02 karaoke-v11/chunks/chunk_03 > /tmp/v11java.tar.xz.b64
+          base64 -d /tmp/v11java.tar.xz.b64 > /tmp/v11java.tar.xz
+          echo "64cc13c2490654945ac8b86ebcd2917cb1d8991af7f6d343ce4c938baef16538  /tmp/v11java.tar.xz" | sha256sum -c -
+          tar -xJf /tmp/v11java.tar.xz -C /tmp/v11src
+          cp /tmp/v11src/java/*.java export-v11-java/
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('export-v11-java/KaraokePlayerActivity.java')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace(r'\p{L}', r'\\p{L}').replace(r'\p{N}', r'\\p{N}')
+          s=s.replace('ts.mediaTimeUs','ts.getAnchorMediaTimeUs()')
+          s=s.replace('ts.clockRate','ts.getMediaClockRate()')
+          s=s.replace('ts.nanoTime','ts.getAnchorSytemNanoTime()')
+          p.write_text(s,encoding='utf-8')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: V11-Java-For-V12
+          path: export-v11-java
+          retention-days: 7
