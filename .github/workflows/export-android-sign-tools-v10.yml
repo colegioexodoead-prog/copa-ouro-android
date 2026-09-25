@@ -28,14 +28,15 @@ jobs:
           SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "build-tools;35.0.0"
-          mkdir -p android-sign-tools/lib
+          mkdir -p android-sign-tools/lib android-sign-tools/lib64
           cp "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" android-sign-tools/
           cp "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" android-sign-tools/
           cp "$ANDROID_SDK_ROOT/build-tools/35.0.0/lib/apksigner.jar" android-sign-tools/lib/
+          cp "$ANDROID_SDK_ROOT/build-tools/35.0.0/lib64/libc++.so" android-sign-tools/lib64/
           chmod +x android-sign-tools/zipalign android-sign-tools/apksigner
       - name: Publicar ferramentas
         uses: actions/upload-artifact@v4
         with:
-          name: Android-Sign-Tools-35
+          name: Android-Sign-Tools-35-FULL
           path: android-sign-tools
           retention-days: 7
