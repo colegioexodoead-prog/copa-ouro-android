@@ -53,6 +53,13 @@ jobs:
           echo "64cc13c2490654945ac8b86ebcd2917cb1d8991af7f6d343ce4c938baef16538  /tmp/v11java.tar.xz" | sha256sum -c -
           tar -xJf /tmp/v11java.tar.xz -C /tmp/v11src
           cp /tmp/v11src/java/*.java karaoke-v11/src/android/app/src/main/java/com/megakaraoke/app/
+          python3 - <<'PYFIX'
+          from pathlib import Path
+          p=Path('karaoke-v11/src/android/app/src/main/java/com/megakaraoke/app/KaraokePlayerActivity.java')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace(r'\p{L}', r'\\p{L}').replace(r'\p{N}', r'\\p{N}')
+          p.write_text(s,encoding='utf-8')
+          PYFIX
           python3 - <<'PY'
           from pathlib import Path
           p=Path('karaoke-v11/src/android/app/src/main/AndroidManifest.xml')
