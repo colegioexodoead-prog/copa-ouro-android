@@ -58,6 +58,9 @@ jobs:
           p=Path('karaoke-v11/src/android/app/src/main/java/com/megakaraoke/app/KaraokePlayerActivity.java')
           s=p.read_text(encoding='utf-8')
           s=s.replace(r'\p{L}', r'\\p{L}').replace(r'\p{N}', r'\\p{N}')
+          s=s.replace('ts.mediaTimeUs','ts.getAnchorMediaTimeUs()')
+          s=s.replace('ts.clockRate','ts.getMediaClockRate()')
+          s=s.replace('ts.nanoTime','ts.getAnchorSytemNanoTime()')
           p.write_text(s,encoding='utf-8')
           PYFIX
           python3 - <<'PY'
