@@ -24,7 +24,6 @@ jobs:
 
       - name: Install Android platform
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0" "platform-tools"
 
@@ -33,19 +32,12 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Extract project
-        run: |
-          rm -rf camuflagem-build
-          mkdir camuflagem-build
-          unzip -q Camuflagem-Arena-Android-Studio.zip -d camuflagem-build
-
       - name: Build APK
-        working-directory: camuflagem-build/CamuflagemArenaAndroid
+        working-directory: camuflagem-arena-android
         run: gradle --no-daemon assembleDebug
 
       - name: Rename APK
-        run: |
-          cp camuflagem-build/CamuflagemArenaAndroid/app/build/outputs/apk/debug/app-debug.apk Camuflagem-Arena.apk
+        run: cp camuflagem-arena-android/app/build/outputs/apk/debug/app-debug.apk Camuflagem-Arena.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
